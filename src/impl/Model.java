@@ -174,8 +174,12 @@ public class Model {
 		System.out.println("start Marker = "+ startMarker());
 		
 		computeVitLabelScores(0, startMarker(), sentence, labelScores);
+		System.out.println("label score init: \n" + priArr(labelScores));
+		
 		
 		ArrayUtil.logNormalize(labelScores);
+		System.out.println("label score init (log norm'd): \n" + priArr(labelScores));
+		
 		//initialization
 		vit[0]=labelScores;
 		for (int k=0; k < numLabels; k++){
@@ -224,11 +228,20 @@ public class Model {
 		{
 			for(int j =0; j<numLabels; j++)
 			{
-				System.out.print(bptr[i][j]+",");
+				System.out.print(bptr[i][j]+",\t");
 			}
 			System.out.println();
 		}
 
+	}
+	
+	/**
+	 * Implement several runs of viterbi but adding a deviation on each each step.
+	 * then on each of the runs that splits switching back to finding the maximum path.
+	 * Is this cool? 
+	 */
+	private void splitViterbiDecode() {
+		
 	}
 
 	private double[] getColumn(double[][] matrix, int col){
