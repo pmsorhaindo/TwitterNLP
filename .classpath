@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7"/>
+	<classpathentry kind="lib" path="res"/>
+	<classpathentry kind="lib" path="libs/berkeleyparser-r32.jar" sourcepath="//smbhome.uscs.susx.ac.uk/ps324/.m2/repository/edu/berkeley/nlp/berkeleyparser/r32/berkeleyparser-r32-sources.jar"/>
+	<classpathentry kind="lib" path="libs/jackson-annotations-2.2.3.jar"/>
+	<classpathentry kind="lib" path="libs/jackson-core-2.2.3.jar"/>
+	<classpathentry kind="lib" path="libs/jackson-databind-2.2.3.jar"/>
+	<classpathentry kind="lib" path="libs/MikeyTwitter.jar"/>
+	<classpathentry kind="lib" path="libs/trove-3.0.3.jar"/>
+	<classpathentry kind="lib" path="libs/twitter-text-1.6.1.jar"/>
+	<classpathentry kind="lib" path="libs/commons-codec-1.9/commons-codec-1.9-javadoc.jar"/>
+	<classpathentry kind="lib" path="libs/commons-codec-1.9/commons-codec-1.9.jar"/>
+	<classpathentry kind="lib" path="libs/commons-lang3-3.3.2/commons-lang3-3.3.2-javadoc.jar"/>
+	<classpathentry kind="lib" path="libs/commons-lang3-3.3.2/commons-lang3-3.3.2.jar"/>
+	<classpathentry kind="lib" path="libs/stanford-corenlp-full-2014-01-04/stanford-corenlp-3.3.1.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
