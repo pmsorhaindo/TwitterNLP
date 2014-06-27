@@ -24,6 +24,7 @@ import edu.stanford.nlp.util.Pair;
 public class Model {
 	public Vocabulary labelVocab;
 	public Vocabulary featureVocab;
+	private Util u;
 
 	/** 
 	 * dim: N_labels 
@@ -42,6 +43,7 @@ public class Model {
 
 
 	public Model() {
+		u = new Util();
 		labelVocab = new Vocabulary();
 		featureVocab = new Vocabulary();
 	}
@@ -215,7 +217,104 @@ public class Model {
 			}
 			for (int s=0; s < numLabels; s++){
 				double[] sprobs = getColumn(prevcurr, s);
-				bptr[t][s] = ArrayUtil.argmax(sprobs);
+				bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
+				vit[t][s] = sprobs[bptr[t][s]];	
+			}
+			labelScores=vit[t];
+		}
+		sentence.labels[T-1] = ArrayUtil.argmax(vit[T-1]);
+		System.out.print("***"+labelVocab.name(sentence.labels[T-1]));
+		System.out.println(" with prob: "+Math.exp(vit[T-1][sentence.labels[T-1]]));
+		int backtrace = bptr[T-1][sentence.labels[T-1]];
+		for (int i=T-2; (i>=0)&&(backtrace != startMarker()); i--){ //termination
+			sentence.labels[i] = backtrace;
+			System.out.println("***"+labelVocab.name(backtrace)
+				+" with prob: "+Math.exp(vit[i][backtrace]));
+			backtrace = bptr[i][backtrace];
+		}
+		assert (backtrace == startMarker());
+		
+		System.out.println("Viterbi print:: is T="+T+" by numLabels="+numLabels);
+		System.out.println("");
+		for(int i =0; i<T; i++)
+		{
+			for(int j =0; j<numLabels; j++)
+			{
+				System.out.print(vit[i][j]+",");
+			}
+			System.out.println();
+		}
+		System.out.println("");
+		System.out.println("bkptr print:L is T="+T+" by numLabels="+numLabels);
+		System.out.println("");
+		for(int i =0; i<T; i++)
+		{
+			for(int j =0; j<numLabels; j++)
+			{
+				System.out.print(bptr[i][j]+",\t");
+			}
+			System.out.println();
+		}
+		
+//		Util u = new Util();
+//		double[] d = {11.0,21.0,23.0,4.0};
+//		System.out.println(priArr(d));
+//		System.out.println("nth largest test::: "+u.nthLargest(1, d));
+//		System.out.println("nth largest test::: "+u.nthLargest(2, d));
+//		System.out.println("nth largest test::: "+u.nthLargest(3, d));	
+//		System.out.println("nth largest test::: "+u.nthLargest(4, d));
+
+	}
+	
+	/**
+	 * Implement several runs of viterbi but adding a deviation on each each step.
+	 * then on each of the runs that splits switching back to finding the maximum path.
+	 * Is this cool? 
+	 */
+	private void divergedViterbiDecode (ModelSentence sentence, int divergePoint){
+		int T = sentence.T;
+		sentence.labels = new int[T];
+		int[][] bptr = new int[T][numLabels];
+		double[][] vit = new double[T][numLabels];
+		double[] labelScores = new double[numLabels];
+		
+//		System.out.println("start Marker = "+ startMarker());
+		computeVitLabelScores(0, startMarker(), sentence, labelScores);
+//		System.out.println("label score init: \n" + priArr(labelScores));		
+		ArrayUtil.logNormalize(labelScores);
+//		System.out.println("label score init (log norm'd): \n" + priArr(labelScores));
+		
+		//initialization
+		vit[0]=labelScores;
+		
+		for (int k=0; k < numLabels; k++){
+			//start marker for all labels 
+			bptr[0][k]=startMarker();
+		}
+		
+//		System.out.println("Initial back pointer array: " + priArr(bptr[0]));
+		
+		for (int t=1; t < T; t++){
+			System.out.println(">>>>Token: "+t);
+			double[][] prevcurr = new double[numLabels][numLabels];
+			for (int s=0; s < numLabels; s++){
+				System.out.println("labelScores["+s+"]"+labelScores[s]);
+				computeVitLabelScores(t, s, sentence, prevcurr[s]);
+				System.out.println("prevcurr["+s+"] "+ priArr(prevcurr[s]));
+				ArrayUtil.logNormalize(prevcurr[s]);
+				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
+			}
+			for (int s=0; s < numLabels; s++){
+				double[] sprobs = getColumn(prevcurr, s);
+				if(t==divergePoint)
+				{
+					bptr[t][s] = u.nthLargest(2, sprobs);
+				}
+				else
+				{
+					bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
+				}
+				
 				vit[t][s] = sprobs[bptr[t][s]];	
 			}
 			labelScores=vit[t];
@@ -261,64 +360,6 @@ public class Model {
 		System.out.println("nth largest test::: "+u.nthLargest(2, d));
 		System.out.println("nth largest test::: "+u.nthLargest(3, d));	
 		System.out.println("nth largest test::: "+u.nthLargest(4, d));
-
-	}
-	
-	/**
-	 * Implement several runs of viterbi but adding a deviation on each each step.
-	 * then on each of the runs that splits switching back to finding the maximum path.
-	 * Is this cool? 
-	 */
-	private void splitViterbiDecode (ModelSentence sentence) {
-		int T = sentence.T;
-		sentence.labels = new int[T];
-		int[][] bptr = new int[T][numLabels];
-		double[][] vit = new double[T][numLabels];
-		double[] labelScores = new double[numLabels];
-		
-		//System.out.println("start Marker = "+ startMarker());
-		computeVitLabelScores(0, startMarker(), sentence, labelScores);
-		//System.out.println("label score init: \n" + priArr(labelScores));
-		ArrayUtil.logNormalize(labelScores);
-		//System.out.println("label score init (log norm'd): \n" + priArr(labelScores));
-		
-		//initialization
-		vit[0]=labelScores;
-		
-		for (int k=0; k < numLabels; k++){
-			//start marker for all labels 
-			bptr[0][k]=startMarker();
-		}
-		
-		System.out.println("Initial back pointer array: " + priArr(bptr[0]));
-		
-		for (int t=1; t < T; t++){
-			
-			double[][] prevcurr = new double[numLabels][numLabels];
-			for (int s=0; s < numLabels; s++){
-				computeVitLabelScores(t, s, sentence, prevcurr[s]);
-				System.out.println("prevcurr["+s+"] "+ priArr(prevcurr[s]));
-				ArrayUtil.logNormalize(prevcurr[s]);
-				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
-			}
-			for (int s=0; s < numLabels; s++){
-				double[] sprobs = getColumn(prevcurr, s);
-				bptr[t][s] = ArrayUtil.argmax(sprobs);
-				vit[t][s] = sprobs[bptr[t][s]];	
-			}
-			labelScores=vit[t];
-		}
-		sentence.labels[T-1] = ArrayUtil.argmax(vit[T-1]);
-		//System.out.print(labelVocab.name(sentence.labels[T-1]));
-		//System.out.println(" with prob: "+Math.exp(vit[T-1][sentence.labels[T-1]]));
-		int backtrace = bptr[T-1][sentence.labels[T-1]];
-		for (int i=T-2; (i>=0)&&(backtrace != startMarker()); i--){ //termination
-			sentence.labels[i] = backtrace;
-			//System.err.println(labelVocab.name(backtrace)
-				//+" with prob: "+Math.exp(vit[i][backtrace]));
-			backtrace = bptr[i][backtrace];
-		}
-		assert (backtrace == startMarker());
 	}
 
 	private double[] getColumn(double[][] matrix, int col){
