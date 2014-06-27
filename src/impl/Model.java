@@ -271,7 +271,7 @@ public class Model {
 	 * then on each of the runs that splits switching back to finding the maximum path.
 	 * Is this cool? 
 	 */
-	private void divergedViterbiDecode (ModelSentence sentence, int divergePoint){
+	public void divergedViterbiDecode (ModelSentence sentence, int divergePoint){
 		int T = sentence.T;
 		sentence.labels = new int[T];
 		int[][] bptr = new int[T][numLabels];
@@ -319,17 +319,34 @@ public class Model {
 			}
 			labelScores=vit[t];
 		}
-		sentence.labels[T-1] = ArrayUtil.argmax(vit[T-1]);
-		//System.out.print(labelVocab.name(sentence.labels[T-1]));
-		//System.out.println(" with prob: "+Math.exp(vit[T-1][sentence.labels[T-1]]));
-		int backtrace = bptr[T-1][sentence.labels[T-1]];
-		for (int i=T-2; (i>=0)&&(backtrace != startMarker()); i--){ //termination
-			sentence.labels[i] = backtrace;
-			//System.err.println(labelVocab.name(backtrace)
-				//+" with prob: "+Math.exp(vit[i][backtrace]));
-			backtrace = bptr[i][backtrace];
+
+		int[][] viterbiPaths = new int[numLabels][T];
+		for(int d =0; d<vit[T-1].length; d++)
+		{
+			
+			//sentence.labels[T-1] = u.nthLargest(d, vit[T-1]); //ArrayUtil.argmax(vit[T-1]);
+			viterbiPaths[d][T-1] = u.nthLargest(d+1, vit[T-1]);
+			Util.p(vit[T-1]);
+			System.out.println("` "+viterbiPaths[d][T-1] +" asd "+labelVocab.name(viterbiPaths[d][T-1]));
+			System.out.print("***"+labelVocab.name(sentence.labels[T-1]));
+			System.out.println(" with prob: "+Math.exp(vit[T-1][sentence.labels[T-1]]));
+	
+			int backtrace = bptr[T-1][sentence.labels[T-1]];
+			for (int i=T-2; (i>=0)&&(backtrace != startMarker()); i--){ //termination
+				//sentence.labels[i] = backtrace;
+				viterbiPaths[d][i] = backtrace;
+				System.out.println(labelVocab.name(backtrace)
+					+" with prob: "+Math.exp(vit[i][backtrace]));
+	
+				backtrace = bptr[i][backtrace];
+			}
+			assert (backtrace == startMarker());
 		}
-		assert (backtrace == startMarker());
+		sentence.labels = viterbiPaths[0];
+		
+		
+		System.out.print("Diverge viterbiPaths :: ");
+		Util.p(viterbiPaths);
 		
 		System.out.println("Viterbi print:: is T="+T+" by numLabels="+numLabels);
 		System.out.println("");
@@ -354,7 +371,7 @@ public class Model {
 		}
 		
 		Util u = new Util();
-		double[] d = {11.0,21.0,23.0,4.0};
+		double[] d = {-11.0,-21.0,23.0,4.0};
 		System.out.println(priArr(d));
 		System.out.println("nth largest test::: "+u.nthLargest(1, d));
 		System.out.println("nth largest test::: "+u.nthLargest(2, d));

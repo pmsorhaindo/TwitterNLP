@@ -162,7 +162,8 @@ public class RunTagger {
 		} else if (decoder == Decoder.VITERBI) {
 //			if (showConfidence) throw new RuntimeException("--confidence only works with greedy decoder right now, sorry, yes this is a lame limitation");
 			System.out.println("Running VITERBI decode()");
-			tagger.model.viterbiDecode(mSent);
+			//tagger.model.viterbiDecode(mSent);
+			tagger.model.divergedViterbiDecode(mSent, 1);
 		}		
 	}
 	

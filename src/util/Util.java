@@ -20,6 +20,15 @@ public class Util {
 		}
 		p("]");
 	}
+	public static void p(int[][] x) {
+
+		System.out.printf("(%s x %s) [\n", x.length, x[0].length);
+		for (int[] row : x) {
+			System.out.printf(" ");
+			p(Arrays.toString(row));
+		}
+		p("]");
+	}
 	public static String sp(double[] x) {
 		ArrayList<String> parts = new ArrayList<String>();
 		for (int i=0; i < x.length; i++)
@@ -49,7 +58,7 @@ public class Util {
 	public int nthLargest(int n, double[] inputArr){
 		
 		double[] record = new double[n];
-		Arrays.fill(record, Double.MIN_VALUE);
+		Arrays.fill(record, Double.NEGATIVE_INFINITY);
 		int hIndex = 0;
 		
 		for(int i = 0; i<inputArr.length; i++)
@@ -58,7 +67,7 @@ public class Util {
 			{
 				if(inputArr[i]>record[j])
 				{
-					System.out.println("Squeeze record");
+					System.out.println("Squeeze record " + inputArr[i]);
 					squeeze(inputArr[i],j,record);
 					p(record);
 					break;
