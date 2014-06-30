@@ -346,12 +346,13 @@ public class Model {
 			System.out.println("` " + viterbiPaths[d][T - 1] + " asd "
 					+ labelVocab.name(viterbiPaths[d][T - 1]));
 			System.out.print("***" + labelVocab.name(viterbiPaths[d][T - 1]));
-			System.out.println(" with prob: "
-					+ Math.exp(vit[T - 1][viterbiPaths[d][T - 1]]));
+			System.out.println(" with prob: " + Math.exp(vit[T - 1][viterbiPaths[d][T - 1]]));
 
 			int backtrace = bptr[T - 1][viterbiPaths[d][T - 1]];
 			for (int i = T - 2; (i >= 0) && (backtrace != startMarker()); i--) { // termination
 				// sentence.labels[i] = backtrace;
+				System.out.println("di : "+d+","+i);
+				System.out.println("bktrace : "+backtrace);
 				viterbiPaths[d][i] = backtrace;
 				System.out.println(labelVocab.name(backtrace) + " with prob: "
 						+ Math.exp(vit[i][backtrace]));
