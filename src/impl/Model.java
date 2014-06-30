@@ -174,6 +174,19 @@ public class Model {
 		assert false : "Unimplemented";
 		return null;
 	}
+	
+	public void splitViterbiDecode(ModelSentence sentence) {
+		int T = sentence.T;
+		sentence.labels = new int[T];
+		int[][] bptr = new int[T][numLabels];
+		double[][] vit = new double[T][numLabels];
+		double[] labelScores = new double[numLabels];
+		
+		computeVitLabelScores(0, startMarker(), sentence, labelScores);
+		
+		
+		
+	}
 
 	/**
 	 * vit[t][k] is the max probability such that the sequence from 0 to t has
@@ -187,15 +200,11 @@ public class Model {
 		double[][] vit = new double[T][numLabels];
 		double[] labelScores = new double[numLabels];
 
-		System.out.println("start Marker = " + startMarker());
-
+		//System.out.println("start Marker = " + startMarker());
 		computeVitLabelScores(0, startMarker(), sentence, labelScores);
-		System.out.println("label score init: \n" + priArr(labelScores));
-
+		//System.out.println("label score init: \n" + priArr(labelScores));
 		ArrayUtil.logNormalize(labelScores);
-		System.out.println("label score init (log norm'd): \n"
-				+ priArr(labelScores));
-
+		//System.out.println("label score init (log norm'd): \n" + priArr(labelScores));
 		// initialization
 		vit[0] = labelScores;
 
@@ -206,6 +215,7 @@ public class Model {
 
 		System.out.println("Initial back pointer array: " + priArr(bptr[0]));
 
+		// Calculate viterbi label scores.
 		for (int t = 1; t < T; t++) {
 			System.out.println(">>>>Token: " + t);
 			double[][] prevcurr = new double[numLabels][numLabels];
@@ -225,6 +235,7 @@ public class Model {
 			}
 			labelScores = vit[t];
 		}
+		
 		sentence.labels[T - 1] = ArrayUtil.argmax(vit[T - 1]);
 		System.out.print("***" + labelVocab.name(sentence.labels[T - 1]));
 		System.out.println(" with prob: "
@@ -253,7 +264,7 @@ public class Model {
 		System.out.println("");
 		for (int i = 0; i < T; i++) {
 			for (int j = 0; j < numLabels; j++) {
-				System.out.print(bptr[i][j] + ",\t");
+				System.out.print("bk "+bptr[i][j] + ",\t");
 			}
 			System.out.println();
 		}
@@ -297,14 +308,14 @@ public class Model {
 
 		// System.out.println("Initial back pointer array: " + priArr(bptr[0]));
 
+		// Calculate viterbi scores
 		for (int t = 1; t < T; t++) {
-			System.out.println(">>>>Token: " + t);
+			//System.out.println(">>>>Token: " + t);
 			double[][] prevcurr = new double[numLabels][numLabels];
 			for (int s = 0; s < numLabels; s++) {
-				System.out.println("labelScores[" + s + "]" + labelScores[s]);
+				//System.out.println("labelScores[" + s + "]" + labelScores[s]);
 				computeVitLabelScores(t, s, sentence, prevcurr[s]);
-				System.out
-						.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
+				//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
 				ArrayUtil.logNormalize(prevcurr[s]);
 				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
 			}
@@ -313,8 +324,7 @@ public class Model {
 				if (t == divergePoint) {
 					bptr[t][s] = u.nthLargest(2, sprobs);
 				} else {
-					bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2,
-															// sprobs);
+					bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
 				}
 
 				vit[t][s] = sprobs[bptr[t][s]];
@@ -322,20 +332,24 @@ public class Model {
 			labelScores = vit[t];
 		}
 
+		System.out.print("vit[][] = ");
+		u.p(vit);
+		
+		// multiple paths produced via viterbi methods.
 		int[][] viterbiPaths = new int[numLabels][T];
+		// for each row in the viterbi matrix (rows = labels : columns = tokens)
 		for (int d = 0; d < vit[T - 1].length; d++) {
 
-			// sentence.labels[T-1] = u.nthLargest(d, vit[T-1]);
-			// //ArrayUtil.argmax(vit[T-1]);
+			// sentence.labels[T-1] = u.nthLargest(d, vit[T-1]); //ArrayUtil.argmax(vit[T-1]);
 			viterbiPaths[d][T - 1] = u.nthLargest(d + 1, vit[T - 1]);
 			Util.p(vit[T - 1]);
 			System.out.println("` " + viterbiPaths[d][T - 1] + " asd "
 					+ labelVocab.name(viterbiPaths[d][T - 1]));
-			System.out.print("***" + labelVocab.name(sentence.labels[T - 1]));
+			System.out.print("***" + labelVocab.name(viterbiPaths[d][T - 1]));
 			System.out.println(" with prob: "
-					+ Math.exp(vit[T - 1][sentence.labels[T - 1]]));
+					+ Math.exp(vit[T - 1][viterbiPaths[d][T - 1]]));
 
-			int backtrace = bptr[T - 1][sentence.labels[T - 1]];
+			int backtrace = bptr[T - 1][viterbiPaths[d][T - 1]];
 			for (int i = T - 2; (i >= 0) && (backtrace != startMarker()); i--) { // termination
 				// sentence.labels[i] = backtrace;
 				viterbiPaths[d][i] = backtrace;
@@ -366,7 +380,7 @@ public class Model {
 		System.out.println("");
 		for (int i = 0; i < T; i++) {
 			for (int j = 0; j < numLabels; j++) {
-				System.out.print(bptr[i][j] + ",\t");
+				System.out.print("bk "+bptr[i][j] + ",\t");
 			}
 			System.out.println();
 		}
@@ -412,9 +426,9 @@ public class Model {
 			double[] labelScores) {
 		Arrays.fill(labelScores, 0);
 		computeBiasScores(labelScores);
-		System.out.println("prior = " + prior);
+		//System.out.println("prior = " + prior);
 		viterbiEdgeScores(prior, sentence, labelScores);
-		System.out.println("t = " + t);
+		//System.out.println("t = " + t);
 		computeObservedFeatureScores(t, sentence, labelScores);
 	}
 
