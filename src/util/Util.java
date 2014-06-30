@@ -67,9 +67,9 @@ public class Util {
 			{
 				if(inputArr[i]>record[j])
 				{
-					System.out.println("Squeeze record " + inputArr[i]);
+					//System.out.println("Squeeze record " + inputArr[i]);
 					squeeze(inputArr[i],j,record);
-					p(record);
+					//p(record);
 					break;
 				}
 			}
