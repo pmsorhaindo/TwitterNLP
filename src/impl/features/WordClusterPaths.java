@@ -68,7 +68,7 @@ public class WordClusterPaths implements FeatureExtractorInterface {
 			if (bitstring != null){
 				int i;
 				bitstring = StringUtils.pad(bitstring, 16).replace(' ', '0');
-				System.out.println("Padded bitstring: "+ bitstring);
+				//System.out.println("Padded bitstring: "+ bitstring);
 				for(i=2; i<=16; i+=2){
 					pairs.add(t, "BigCluster|" + bitstring.substring(0,i));
 					//System.out.println("adding big cluster pair: "+ bitstring.substring(0,i));

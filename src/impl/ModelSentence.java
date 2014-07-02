@@ -3,6 +3,7 @@ package impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import util.ViterbiPaths;
 import edu.stanford.nlp.util.Pair;
 
 /**
@@ -16,6 +17,9 @@ public class ModelSentence {
 	 * dim T
 	 **/
 	public int labels[];
+	
+	public ViterbiPaths paths[];
+	public int[][] nPaths;
 	
 	public double confidences[];
 	

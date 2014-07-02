@@ -7,8 +7,11 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.apache.commons.lang3.ArrayUtils;
+
 import util.BasicFileIO;
 import util.Util;
+import util.ViterbiPaths;
 import edu.berkeley.nlp.util.ArrayUtil;
 import edu.berkeley.nlp.util.Triple;
 import edu.stanford.nlp.math.ArrayMath;
@@ -103,15 +106,15 @@ public class Model {
 	 * rolling edge feature extraction
 	 **/
 	public void greedyDecode(ModelSentence sentence, boolean storeConfidences) {
-		System.out.println("Running the greedy decode.");
+		//System.out.println("Running the greedy decode.");
 
 		int T = sentence.T;
 		sentence.labels = new int[T];
 		sentence.edgeFeatures[0] = startMarker();
 
-		System.out.println("sentence edge feature 1 aka startMarker(): "
-				+ sentence.edgeFeatures[0]);
-		System.out.println("numLabels: " + numLabels + " T: " + T);
+		//System.out.println("sentence edge feature 1 aka startMarker(): "
+		//		+ sentence.edgeFeatures[0]);
+		//System.out.println("numLabels: " + numLabels + " T: " + T);
 
 		if (storeConfidences)
 			sentence.confidences = new double[T];
@@ -120,11 +123,11 @@ public class Model {
 		for (int t = 0; t < T; t++) {
 			computeLabelScores(t, sentence, labelScores);
 			sentence.labels[t] = ArrayMath.argmax(labelScores);
-			System.out.println("labelScores " + priArr(labelScores));
-			System.out.println("label with highest score: "
-					+ ArrayMath.argmax(labelScores));
-			System.out.println("name of that label: "
-					+ labelVocab.name(ArrayMath.argmax(labelScores)));
+			//System.out.println("labelScores " + priArr(labelScores));
+			//System.out.println("label with highest score: "
+			//		+ ArrayMath.argmax(labelScores));
+			//System.out.println("name of that label: "
+			//		+ labelVocab.name(ArrayMath.argmax(labelScores)));
 			nargmax(labelScores, 1);
 			if (t < T - 1)
 				sentence.edgeFeatures[t + 1] = sentence.labels[t];
@@ -176,15 +179,30 @@ public class Model {
 	}
 	
 	public void splitViterbiDecode(ModelSentence sentence) {
-		int T = sentence.T;
-		sentence.labels = new int[T];
-		int[][] bptr = new int[T][numLabels];
-		double[][] vit = new double[T][numLabels];
-		double[] labelScores = new double[numLabels];
 		
-		computeVitLabelScores(0, startMarker(), sentence, labelScores);
+		ViterbiPaths vp = new ViterbiPaths();
+		for(int i=0; i<sentence.T; i++)
+		{
+			divergedViterbiDecode(sentence, i, vp);
+			//System.out.println("paths size: "+vp.getPaths().size());
+			//System.out.println("probs size: "+vp.getProbs().size());
+		}
+		Double[] objArr = (Double[]) (vp.getProbs()).toArray(new Double[0]);
+		double[] arr = ArrayUtils.toPrimitive(objArr);
+		int index = u.nthLargest(2, arr);
+		//System.out.println("index of largest: "+index +":"+objArr.length+":"+arr.length);
+		//System.out.println("probs: ");
+		//Util.p(arr);
 		
-		
+		ArrayList<Integer> vPathArrList = vp.getPaths().get(index);
+		Integer[] vPathArrListObjArr = (Integer[]) vPathArrList.toArray(new Integer[0]);
+		int[] vPath = ArrayUtils.toPrimitive(vPathArrListObjArr);
+		int n = 3;
+		int[][] npaths = vp.topNHighestPaths(n, 4);
+		sentence.nPaths = npaths;
+		//System.out.println("n("+n+") paths:");
+		//Util.p(npaths);
+		sentence.labels = vPath;
 		
 	}
 
@@ -213,17 +231,16 @@ public class Model {
 			bptr[0][k] = startMarker();
 		}
 
-		System.out.println("Initial back pointer array: " + priArr(bptr[0]));
+		//System.out.println("Initial back pointer array: " + priArr(bptr[0]));
 
 		// Calculate viterbi label scores.
 		for (int t = 1; t < T; t++) {
-			System.out.println(">>>>Token: " + t);
+			//System.out.println(">>>>Token: " + t);
 			double[][] prevcurr = new double[numLabels][numLabels];
 			for (int s = 0; s < numLabels; s++) {
-				System.out.println("labelScores[" + s + "]" + labelScores[s]);
+				//System.out.println("labelScores[" + s + "]" + labelScores[s]);
 				computeVitLabelScores(t, s, sentence, prevcurr[s]);
-				System.out
-						.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
+				//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
 				ArrayUtil.logNormalize(prevcurr[s]);
 				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
 			}
@@ -237,19 +254,19 @@ public class Model {
 		}
 		
 		sentence.labels[T - 1] = ArrayUtil.argmax(vit[T - 1]);
-		System.out.print("***" + labelVocab.name(sentence.labels[T - 1]));
-		System.out.println(" with prob: "
-				+ Math.exp(vit[T - 1][sentence.labels[T - 1]]));
+		//System.out.print("***" + labelVocab.name(sentence.labels[T - 1]));
+		//System.out.println(" with prob: "
+		//		+ Math.exp(vit[T - 1][sentence.labels[T - 1]]));
 		int backtrace = bptr[T - 1][sentence.labels[T - 1]];
 		for (int i = T - 2; (i >= 0) && (backtrace != startMarker()); i--) { // termination
 			sentence.labels[i] = backtrace;
-			System.out.println("***" + labelVocab.name(backtrace)
-					+ " with prob: " + Math.exp(vit[i][backtrace]));
+			//System.out.println("***" + labelVocab.name(backtrace)
+			//		+ " with prob: " + Math.exp(vit[i][backtrace]));
 			backtrace = bptr[i][backtrace];
 		}
 		assert (backtrace == startMarker());
 
-		System.out.println("Viterbi print:: is T=" + T + " by numLabels="
+/*		System.out.println("Viterbi print:: is T=" + T + " by numLabels="
 				+ numLabels);
 		System.out.println("");
 		for (int i = 0; i < T; i++) {
@@ -268,6 +285,7 @@ public class Model {
 			}
 			System.out.println();
 		}
+*/
 
 		// Util u = new Util();
 		// double[] d = {11.0,21.0,23.0,4.0};
@@ -283,8 +301,9 @@ public class Model {
 	 * Implement several runs of viterbi but adding a deviation on each each
 	 * step. then on each of the runs that splits switching back to finding the
 	 * maximum path. Is this cool?
+	 * @return 
 	 */
-	public void divergedViterbiDecode(ModelSentence sentence, int divergePoint) {
+	public ViterbiPaths divergedViterbiDecode(ModelSentence sentence, int divergePoint, ViterbiPaths vp) {
 		int T = sentence.T;
 		sentence.labels = new int[T];
 		int[][] bptr = new int[T][numLabels];
@@ -332,37 +351,46 @@ public class Model {
 			labelScores = vit[t];
 		}
 
-		System.out.print("vit[][] = ");
-		u.p(vit);
+		//System.out.print("vit[][] = ");
+		//u.p(vit);
 		
 		// multiple paths produced via viterbi methods.
 		int[][] viterbiPaths = new int[numLabels][T];
+		double[] probs = new double[numLabels];
 		// for each row in the viterbi matrix (rows = labels : columns = tokens)
 		for (int d = 0; d < vit[T - 1].length; d++) {
 
 			// sentence.labels[T-1] = u.nthLargest(d, vit[T-1]); //ArrayUtil.argmax(vit[T-1]);
 			viterbiPaths[d][T - 1] = u.nthLargest(d + 1, vit[T - 1]);
-			Util.p(vit[T - 1]);
-			System.out.println("` " + viterbiPaths[d][T - 1] + " asd "
-					+ labelVocab.name(viterbiPaths[d][T - 1]));
-			System.out.print("***" + labelVocab.name(viterbiPaths[d][T - 1]));
-			System.out.println(" with prob: " + Math.exp(vit[T - 1][viterbiPaths[d][T - 1]]));
-
+			//Util.p(vit[T - 1]);
+			//System.out.println("` " + viterbiPaths[d][T - 1] + " asd "
+			//		+ labelVocab.name(viterbiPaths[d][T - 1]));
+			//System.out.print("***" + labelVocab.name(viterbiPaths[d][T - 1]));
+			//System.out.println(" with prob: " + Math.exp(vit[T - 1][viterbiPaths[d][T - 1]]));
+			double unNormalProb = Math.exp(vit[T - 1][viterbiPaths[d][T - 1]]);
+			
 			int backtrace = bptr[T - 1][viterbiPaths[d][T - 1]];
 			for (int i = T - 2; (i >= 0) && (backtrace != startMarker()); i--) { // termination
 				// sentence.labels[i] = backtrace;
-				System.out.println("di : "+d+","+i);
-				System.out.println("bktrace : "+backtrace);
 				viterbiPaths[d][i] = backtrace;
-				System.out.println(labelVocab.name(backtrace) + " with prob: "
-						+ Math.exp(vit[i][backtrace]));
+				//System.out.println(labelVocab.name(backtrace) + " with prob: "
+				//		+ Math.exp(vit[i][backtrace]));
+				unNormalProb *= Math.exp(vit[i][backtrace]);
 
 				backtrace = bptr[i][backtrace];
 			}
 			assert (backtrace == startMarker());
+			probs[d] = unNormalProb;
 		}
-		sentence.labels = viterbiPaths[0];
-
+		//sentence.labels = viterbiPaths[1];
+		vp.addPaths(viterbiPaths);
+		vp.addProbs(probs);
+		// TODO append to viterbi paths
+		// TODO run again move diverge back
+		// TODO repeat for all
+		
+/*		Util.p(probs);
+		
 		System.out.print("Diverge viterbiPaths :: ");
 		Util.p(viterbiPaths);
 
@@ -385,7 +413,7 @@ public class Model {
 			}
 			System.out.println();
 		}
-
+*/
 		// nth largest tests
 		// Util u = new Util();
 		// double[] d = {-11.0,-21.0,23.0,4.0};
@@ -394,6 +422,8 @@ public class Model {
 		// System.out.println("nth largest test::: "+u.nthLargest(2, d));
 		// System.out.println("nth largest test::: "+u.nthLargest(3, d));
 		// System.out.println("nth largest test::: "+u.nthLargest(4, d));
+		
+		return vp;
 	}
 
 	private double[] getColumn(double[][] matrix, int col) {

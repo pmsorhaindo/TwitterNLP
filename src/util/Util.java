@@ -59,7 +59,6 @@ public class Util {
 		
 		double[] record = new double[n];
 		Arrays.fill(record, Double.NEGATIVE_INFINITY);
-		int hIndex = 0;
 		
 		for(int i = 0; i<inputArr.length; i++)
 		{

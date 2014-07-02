@@ -31,7 +31,7 @@ public class RunTagger {
 	
 	// Commandline I/O-ish options
 	String inputFormat = "auto";
-	String outputFormat = "auto";
+	String outputFormat = "conll";//"auto";
 	int inputField = 1;
 	
 	String inputFilename;
@@ -88,7 +88,7 @@ public class RunTagger {
 			tagger.loadModel(modelFilename);			
 		}
 		
-		if (inputFormat.equals("conll")) {
+		if (true){//(inputFormat.equals("conll")) {
 			runTaggerInEvalMode();
 			return;
 		} 
@@ -136,10 +136,10 @@ public class RunTagger {
 				
 				for(int t = 0; t<modelSentence.T; t++)
 				{
-					System.out.println("asdfasdfadsf:::: "+ tagger.model.labelVocab.name(modelSentence.labels[t]));
+					//System.out.println("asdfasdfadsf:::: "+ tagger.model.labelVocab.name(modelSentence.labels[t]));
 				}
 				
-				System.out.println("outputPrepend...");
+				//System.out.println("outputPrepend...");
 				outputPrependedTagging(sentence, modelSentence, justTokenize, line);
 			}
 			numtoks += sentence.T();
@@ -157,13 +157,13 @@ public class RunTagger {
 	/** Runs the correct algorithm (make config option perhaps) **/
 	public void goDecode(ModelSentence mSent) {
 		if (decoder == Decoder.GREEDY) {
-			System.out.println("Running GREEDY decode()");
+			//System.out.println("Running GREEDY decode()");
 			tagger.model.greedyDecode(mSent, showConfidence);
 		} else if (decoder == Decoder.VITERBI) {
-//			if (showConfidence) throw new RuntimeException("--confidence only works with greedy decoder right now, sorry, yes this is a lame limitation");
-			System.out.println("Running VITERBI decode()");
+//			if (showConfidence) throw new RuntimeException("--confidence only works with greedy decoder right now, sorry, yes this is a lame limitation"); <<< I kinda fixed it no? :D MIKEY FOR PRESIDENT!
+			//System.out.println("Running VITERBI decode()");
 			//tagger.model.viterbiDecode(mSent);
-			tagger.model.divergedViterbiDecode(mSent, 2);
+			tagger.model.splitViterbiDecode(mSent);
 		}		
 	}
 	
@@ -189,7 +189,8 @@ public class RunTagger {
 			if ( ! noOutput) {
 				outputJustTagging(sentence, mSent);	
 			}
-			evaluateSentenceTagging(sentence, mSent);
+			//evaluateSentenceTagging(sentence, mSent);
+			evaluateSentenceTaggingNPath(sentence, mSent);
 			//evaluateOOV(sentence, mSent);
 			//getconfusion(sentence, mSent, confusion);
 		}
@@ -243,6 +244,28 @@ public class RunTagger {
 			numTokensCorrect += (trueLabel == predLabel) ? 1 : 0;
 			numTokens += 1;
 		}
+	}
+	
+	public void evaluateSentenceTaggingNPath(Sentence lSent, ModelSentence mSent) {
+		int tempNumTokensCorrect = 0;
+		int maxCorrect = 0;
+		for(int i=0; i<mSent.nPaths.length; i++)
+		{
+			tempNumTokensCorrect = 0;
+			for (int t=0; t < mSent.T; t++) {
+				int trueLabel = tagger.model.labelVocab.num(lSent.labels.get(t));
+				int predLabel = mSent.nPaths[i][t];
+				tempNumTokensCorrect += (trueLabel == predLabel) ? 1 : 0;
+			}
+			if (tempNumTokensCorrect > maxCorrect)
+			{
+				maxCorrect = tempNumTokensCorrect;
+			}
+		}
+		numTokensCorrect+=maxCorrect;
+		numTokens +=mSent.T;
+		
+		
 	}
 	
 	private String formatConfidence(double confidence) {

@@ -70,9 +70,9 @@ public class FeatureExtractor {
 		// Extract in featurename form
 		for (FeatureExtractorInterface fe : allFeatureExtractors) {
 			fe.addFeatures(sentence.tokens, pairs);
-			System.out.println("Pairs has increased to size " + pairs.size());
+			//System.out.println("Pairs has increased to size " + pairs.size());
 		}
-		System.out.println("Pairs populated!!");
+		//System.out.println("Pairs populated!!");
 		System.out.println(pairs.toString());
 
 		// Numberize.  This should be melded with the addFeatures() loop above, so no wasteful
@@ -85,7 +85,7 @@ public class FeatureExtractor {
 				// Skip OOV features at test time.
 				// Note we have implicit conjunctions from base features, so
 				// these are base features that weren't seen for *any* label at training time -- of course they will be useless for us...
-				System.out.println("Skiping OOV feature");
+				//System.out.println("Skipping OOV feature");
 				continue;
 			}
 			double fValue = pairs.featureValues.get(i);
