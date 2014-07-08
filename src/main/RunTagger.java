@@ -190,7 +190,9 @@ public class RunTagger {
 				outputJustTagging(sentence, mSent);	
 			}
 			//evaluateSentenceTagging(sentence, mSent);
-			evaluateSentenceTaggingNPath(sentence, mSent);
+			//evaluateCompleteSentenceTagging(sentence,mSent);
+			//evaluateSentenceTaggingNPath(sentence, mSent);
+			evaluateCompleteSentenceTaggingNPath(sentence, mSent);
 			//evaluateOOV(sentence, mSent);
 			//getconfusion(sentence, mSent, confusion);
 		}
@@ -244,6 +246,44 @@ public class RunTagger {
 			numTokensCorrect += (trueLabel == predLabel) ? 1 : 0;
 			numTokens += 1;
 		}
+	}
+	
+	public void evaluateCompleteSentenceTagging(Sentence lSent, ModelSentence mSent) {
+		int tempNumTokensCorrect = 0;
+		for (int t=0; t < mSent.T; t++) {
+			int trueLabel = tagger.model.labelVocab.num(lSent.labels.get(t));
+			int predLabel = mSent.labels[t];
+			tempNumTokensCorrect += (trueLabel == predLabel) ? 1 : 0;
+			
+		}
+		if(tempNumTokensCorrect == mSent.T)
+		{
+			numTokensCorrect +=1;
+		}
+		numTokens += 1;
+	}
+	
+	public void evaluateCompleteSentenceTaggingNPath(Sentence lSent, ModelSentence mSent) {
+		int tempNumTokensCorrect = 0;
+		int maxCorrect = 0;
+		for(int i=0; i<mSent.nPaths.length; i++)
+		{
+			tempNumTokensCorrect = 0;
+			for (int t=0; t < mSent.T; t++) {
+				int trueLabel = tagger.model.labelVocab.num(lSent.labels.get(t));
+				int predLabel = mSent.nPaths[i][t];
+				tempNumTokensCorrect += (trueLabel == predLabel) ? 1 : 0;
+			}
+			if (tempNumTokensCorrect > maxCorrect)
+			{
+				maxCorrect = tempNumTokensCorrect;
+			}
+		}
+		if(maxCorrect == mSent.T)
+		{
+			numTokensCorrect += 1;
+		}
+		numTokens += 1;
 	}
 	
 	public void evaluateSentenceTaggingNPath(Sentence lSent, ModelSentence mSent) {
