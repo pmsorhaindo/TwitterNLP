@@ -55,6 +55,7 @@ public class Util {
 		}
 	}
 	
+	
 	public int nthLargest(int n, double[] inputArr){
 		
 		double[] record = new double[n];
@@ -82,5 +83,13 @@ public class Util {
 			}
 		}
 		return 0;
+	}
+	
+	public double[] getColumn(double[][] matrix, int col) {
+		double[] column = new double[matrix.length];
+		for (int i = 0; i < matrix[0].length; i++) {
+			column[i] = matrix[i][col];
+		}
+		return column;
 	}
 }

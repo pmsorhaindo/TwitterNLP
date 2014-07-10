@@ -207,68 +207,6 @@ public class Model {
 		
 	}
 
-	/**
-	 * vit[t][k] is the max probability such that the sequence from 0 to t has
-	 * token t labeled with tag k. (0<=t<T) bptr[t][k] gives the max prob. tag
-	 * of token t-1 (t=0->startMarker)
-	 */
-	public void viterbiDecode(ModelSentence sentence) {
-		int T = sentence.T;
-		sentence.labels = new int[T];
-		int[][] bptr = new int[T][numLabels];
-		double[][] vit = new double[T][numLabels];
-		double[] labelScores = new double[numLabels];
-
-		//System.out.println("start Marker = " + startMarker());
-		
-		computeVitLabelScores(0, startMarker(), sentence, labelScores);
-		//System.out.println("label score init: \n" + priArr(labelScores));
-		ArrayUtil.logNormalize(labelScores);
-		//System.out.println("label score init (log norm'd): \n" + priArr(labelScores));
-		// initialization
-		vit[0] = labelScores;
-
-		for (int k = 0; k < numLabels; k++) {
-			// start marker for all labels
-			bptr[0][k] = startMarker();
-		}
-
-		//System.out.println("Initial back pointer array: " + priArr(bptr[0]));
-
-		// Calculate viterbi label scores.
-		for (int t = 1; t < T; t++) {
-			//System.out.println(">>>>Token: " + t);
-			double[][] prevcurr = new double[numLabels][numLabels];
-			for (int s = 0; s < numLabels; s++) {
-				//System.out.println("labelScores[" + s + "]" + labelScores[s]);
-				computeVitLabelScores(t, s, sentence, prevcurr[s]);
-				//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
-				ArrayUtil.logNormalize(prevcurr[s]);
-				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
-			}
-			for (int s = 0; s < numLabels; s++) {
-				double[] sprobs = getColumn(prevcurr, s);
-				bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2,
-														// sprobs);
-				vit[t][s] = sprobs[bptr[t][s]];
-			}
-			labelScores = vit[t];
-		}
-		
-		sentence.labels[T - 1] = ArrayUtil.argmax(vit[T - 1]);
-		//System.out.print("***" + labelVocab.name(sentence.labels[T - 1]));
-		//System.out.println(" with prob: "
-		//		+ Math.exp(vit[T - 1][sentence.labels[T - 1]]));
-		int backtrace = bptr[T - 1][sentence.labels[T - 1]];
-		for (int i = T - 2; (i >= 0) && (backtrace != startMarker()); i--) { // termination
-			sentence.labels[i] = backtrace;
-			//System.out.println("***" + labelVocab.name(backtrace)
-			//		+ " with prob: " + Math.exp(vit[i][backtrace]));
-			backtrace = bptr[i][backtrace];
-		}
-		assert (backtrace == startMarker());
-		
-	}
 
 	/**
 	 * Implement several runs of viterbi but adding a deviation on each each
@@ -414,7 +352,30 @@ public class Model {
 			labelScores = vit[t];
 		}
 	}
+	
+	//TODO remove
+	public void computeVitLabelScores(int t, int prior, ModelSentence sentence,
+			double[] labelScores) {
+		Arrays.fill(labelScores, 0);
+		computeBiasScores(labelScores);
+		//System.out.println("prior = " + prior);
+		viterbiEdgeScores(prior, sentence, labelScores);
+		//System.out.println("t = " + t);
+		computeObservedFeatureScores(t, sentence, labelScores);
+	}
+	
+	/**
+	 * @return dim T array s.t. labelScores[t]+=score of label prior followed by
+	 *         label t
+	 **/
+	public void viterbiEdgeScores(int prior, ModelSentence sentence,
+			double[] EdgeScores) {
+		for (int k = 0; k < numLabels; k++) {
+			EdgeScores[k] += edgeCoefs[prior][k];
+		}
+	}
 
+	//TODO remove
 	private double[] getColumn(double[][] matrix, int col) {
 		double[] column = new double[matrix.length];
 		for (int i = 0; i < matrix[0].length; i++) {
@@ -442,15 +403,7 @@ public class Model {
 		computeObservedFeatureScores(t, sentence, labelScores);
 	}
 
-	public void computeVitLabelScores(int t, int prior, ModelSentence sentence,
-			double[] labelScores) {
-		Arrays.fill(labelScores, 0);
-		computeBiasScores(labelScores);
-		//System.out.println("prior = " + prior);
-		viterbiEdgeScores(prior, sentence, labelScores);
-		//System.out.println("t = " + t);
-		computeObservedFeatureScores(t, sentence, labelScores);
-	}
+
 
 	/** Adds into labelScores **/
 	public void computeBiasScores(double[] labelScores) {
@@ -467,17 +420,6 @@ public class Model {
 			labelScores[k] += edgeCoefs[prev][k];
 		}
 
-	}
-
-	/**
-	 * @return dim T array s.t. labelScores[t]+=score of label prior followed by
-	 *         label t
-	 **/
-	public void viterbiEdgeScores(int prior, ModelSentence sentence,
-			double[] EdgeScores) {
-		for (int k = 0; k < numLabels; k++) {
-			EdgeScores[k] += edgeCoefs[prior][k];
-		}
 	}
 
 	/** Adds into labelScores **/
