@@ -73,7 +73,7 @@ public class FeatureExtractor {
 			//System.out.println("Pairs has increased to size " + pairs.size());
 		}
 		//System.out.println("Pairs populated!!");
-		System.out.println(pairs.toString());
+		//System.out.println(pairs.toString());
 
 		// Numberize.  This should be melded with the addFeatures() loop above, so no wasteful
 		// temporaries that later turn out to be OOV... but is this really an issue?

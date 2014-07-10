@@ -490,7 +490,7 @@ class OptimizerState {
 	private boolean getNextPoint(double alpha) {			
 		ArrayMath.addMultInto(newX, x, dir, alpha);
 		/*if (OWLQN.isConstrained())
-			newX = OWLQN.projectWeights(newX);*/ //TODO
+			newX = OWLQN.projectWeights(newX);*/ //TODO OWLQN.projectWeights
 		if (l1weight > 0) {
 			for (int i=0; i<dim; i++) {
 				//mheilman: I added this if-statement to avoid penalizing bias parameters.

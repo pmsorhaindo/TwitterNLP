@@ -31,7 +31,7 @@ public class RunTagger {
 	
 	// Commandline I/O-ish options
 	String inputFormat = "auto";
-	String outputFormat = "conll";//"auto";
+	String outputFormat = "auto"; //"conll";//"auto";
 	int inputField = 1;
 	
 	String inputFilename;
@@ -88,7 +88,7 @@ public class RunTagger {
 			tagger.loadModel(modelFilename);			
 		}
 		
-		if (true){//(inputFormat.equals("conll")) {
+		if (inputFormat.equals("conll")) { //(true){//
 			runTaggerInEvalMode();
 			return;
 		} 

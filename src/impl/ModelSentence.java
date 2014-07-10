@@ -18,7 +18,9 @@ public class ModelSentence {
 	 **/
 	public int labels[];
 	
-	public ViterbiPaths paths[];
+	/** 
+	 * List of most probable paths
+	 */
 	public int[][] nPaths;
 	
 	public double confidences[];

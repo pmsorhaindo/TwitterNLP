@@ -117,6 +117,7 @@ public class Model {
 		//System.out.println("numLabels: " + numLabels + " T: " + T);
 
 		if (storeConfidences)
+			//TODO will need an extra dimension for multi-path greedy.
 			sentence.confidences = new double[T];
 
 		double[] labelScores = new double[numLabels];
@@ -128,7 +129,7 @@ public class Model {
 			//		+ ArrayMath.argmax(labelScores));
 			//System.out.println("name of that label: "
 			//		+ labelVocab.name(ArrayMath.argmax(labelScores)));
-			nargmax(labelScores, 1);
+			//nargmax(labelScores, 1);
 			if (t < T - 1)
 				sentence.edgeFeatures[t + 1] = sentence.labels[t];
 			if (storeConfidences) {
@@ -163,10 +164,10 @@ public class Model {
 	}
 
 	// TODO make this nicer
-	public int nargmax(double[] vals, int n) {
-		//
-		return n;
-	}
+	//	public int nargmax(double[] vals, int n) {
+	//		System.out.println("asdf");
+	//		return n;
+	//	}
 
 	/**
 	 * This needs forward-backward I think
@@ -219,6 +220,7 @@ public class Model {
 		double[] labelScores = new double[numLabels];
 
 		//System.out.println("start Marker = " + startMarker());
+		
 		computeVitLabelScores(0, startMarker(), sentence, labelScores);
 		//System.out.println("label score init: \n" + priArr(labelScores));
 		ArrayUtil.logNormalize(labelScores);
@@ -265,36 +267,7 @@ public class Model {
 			backtrace = bptr[i][backtrace];
 		}
 		assert (backtrace == startMarker());
-
-/*		System.out.println("Viterbi print:: is T=" + T + " by numLabels="
-				+ numLabels);
-		System.out.println("");
-		for (int i = 0; i < T; i++) {
-			for (int j = 0; j < numLabels; j++) {
-				System.out.print(vit[i][j] + ",");
-			}
-			System.out.println();
-		}
-		System.out.println("");
-		System.out.println("bkptr print:L is T=" + T + " by numLabels="
-				+ numLabels);
-		System.out.println("");
-		for (int i = 0; i < T; i++) {
-			for (int j = 0; j < numLabels; j++) {
-				System.out.print("bk "+bptr[i][j] + ",\t");
-			}
-			System.out.println();
-		}
-*/
-
-		// Util u = new Util();
-		// double[] d = {11.0,21.0,23.0,4.0};
-		// System.out.println(priArr(d));
-		// System.out.println("nth largest test::: "+u.nthLargest(1, d));
-		// System.out.println("nth largest test::: "+u.nthLargest(2, d));
-		// System.out.println("nth largest test::: "+u.nthLargest(3, d));
-		// System.out.println("nth largest test::: "+u.nthLargest(4, d));
-
+		
 	}
 
 	/**
@@ -338,6 +311,8 @@ public class Model {
 				ArrayUtil.logNormalize(prevcurr[s]);
 				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
 			}
+			//System.out.println("prevcurr: ");
+			//u.p(prevcurr);
 			for (int s = 0; s < numLabels; s++) {
 				double[] sprobs = getColumn(prevcurr, s);
 				if (t == divergePoint) {
@@ -385,45 +360,59 @@ public class Model {
 		//sentence.labels = viterbiPaths[1];
 		vp.addPaths(viterbiPaths);
 		vp.addProbs(probs);
-		// TODO append to viterbi paths
-		// TODO run again move diverge back
-		// TODO repeat for all
-		
-/*		Util.p(probs);
-		
-		System.out.print("Diverge viterbiPaths :: ");
-		Util.p(viterbiPaths);
-
-		System.out.println("Viterbi print:: is T=" + T + " by numLabels="
-				+ numLabels);
-		System.out.println("");
-		for (int i = 0; i < T; i++) {
-			for (int j = 0; j < numLabels; j++) {
-				System.out.print(vit[i][j] + ",");
-			}
-			System.out.println();
-		}
-		System.out.println("");
-		System.out.println("bkptr print:L is T=" + T + " by numLabels="
-				+ numLabels);
-		System.out.println("");
-		for (int i = 0; i < T; i++) {
-			for (int j = 0; j < numLabels; j++) {
-				System.out.print("bk "+bptr[i][j] + ",\t");
-			}
-			System.out.println();
-		}
-*/
-		// nth largest tests
-		// Util u = new Util();
-		// double[] d = {-11.0,-21.0,23.0,4.0};
-		// System.out.println(priArr(d));
-		// System.out.println("nth largest test::: "+u.nthLargest(1, d));
-		// System.out.println("nth largest test::: "+u.nthLargest(2, d));
-		// System.out.println("nth largest test::: "+u.nthLargest(3, d));
-		// System.out.println("nth largest test::: "+u.nthLargest(4, d));
-		
+	
 		return vp;
+	}
+	
+	public void doubleBackPointerArray(ModelSentence sentence, int divergePoint, ViterbiPaths vp) {
+		int T = sentence.T;
+		sentence.labels = new int[T];
+		int[][] bptr = new int[T][numLabels];
+		double[][] vit = new double[T][numLabels];
+		double[] labelScores = new double[numLabels];
+
+		// System.out.println("start Marker = "+ startMarker());
+		computeVitLabelScores(0, startMarker(), sentence, labelScores);
+		// System.out.println("label score init: \n" + priArr(labelScores));
+		ArrayUtil.logNormalize(labelScores);
+		// System.out.println("label score init (log norm'd): \n" +
+		// priArr(labelScores));
+
+		// initialization
+		vit[0] = labelScores;
+
+		for (int k = 0; k < numLabels; k++) {
+			// start marker for all labels
+			bptr[0][k] = startMarker();
+		}
+
+		// System.out.println("Initial back pointer array: " + priArr(bptr[0]));
+
+		// Calculate viterbi scores
+		for (int t = 1; t < T; t++) {
+			//System.out.println(">>>>Token: " + t);
+			double[][] prevcurr = new double[numLabels][numLabels];
+			for (int s = 0; s < numLabels; s++) {
+				//System.out.println("labelScores[" + s + "]" + labelScores[s]);
+				computeVitLabelScores(t, s, sentence, prevcurr[s]);
+				//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
+				ArrayUtil.logNormalize(prevcurr[s]);
+				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
+			}
+			System.out.println("prevcurr: ");
+			u.p(prevcurr);
+			for (int s = 0; s < numLabels; s++) {
+				double[] sprobs = getColumn(prevcurr, s);
+				if (t == divergePoint) {
+					bptr[t][s] = u.nthLargest(2, sprobs);
+				} else {
+					bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
+				}
+
+				vit[t][s] = sprobs[bptr[t][s]];
+			}
+			labelScores = vit[t];
+		}
 	}
 
 	private double[] getColumn(double[][] matrix, int col) {
@@ -473,11 +462,11 @@ public class Model {
 	/** Adds into labelScores **/
 	public void computeEdgeScores(int t, ModelSentence sentence,
 			double[] labelScores) {
-		// Util.p(sentence.edgeFeatures);
 		int prev = sentence.edgeFeatures[t];
 		for (int k = 0; k < numLabels; k++) {
 			labelScores[k] += edgeCoefs[prev][k];
 		}
+
 	}
 
 	/**
