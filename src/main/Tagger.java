@@ -1,15 +1,14 @@
 package main;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-
 import impl.Model;
 import impl.ModelSentence;
 import impl.Sentence;
+import impl.decoders.greedy.Greedy;
 import impl.features.FeatureExtractor;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -61,8 +60,10 @@ public class Tagger {
 		sentence.tokens = tokens;
 		ModelSentence ms = new ModelSentence(sentence.T());
 		featureExtractor.computeFeatures(sentence, ms);
-		model.greedyDecode(ms, false);
-
+		//model.greedyDecode(ms, false);
+		Greedy greedy = new Greedy(model);
+		greedy.greedyDecode(ms, false);
+		
 		ArrayList<TaggedToken> taggedTokens = new ArrayList<TaggedToken>();
 
 		for (int t=0; t < sentence.T(); t++) {

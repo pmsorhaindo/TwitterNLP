@@ -12,21 +12,22 @@ import edu.berkeley.nlp.util.ArrayUtil;
 
 public class Viterbi implements IDecoder {
 
-	private int numLabels; // initialized in loadModelFromText
+	private int numLabels;
 	private Model m;
 	private DecoderUtils dUtils;
 	private Util u;
 	
-		public Viterbi(Model m){
+	public Viterbi(Model m){
 		
-		numLabels = 0; //TODO update when Viterbi is constructed.
+		numLabels = m.labelVocab.size();
 		this.m = m;
 		this.dUtils = new DecoderUtils(m);
 		this.u = new Util();
 	}
+	
 	@Override
 	public void decode(ModelSentence sentence) {
-		// TODO Auto-generated method stub
+		viterbiDecode(sentence);
 
 	}
 

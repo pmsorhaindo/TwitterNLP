@@ -6,12 +6,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-
-import org.apache.commons.lang3.ArrayUtils;
-
 import util.BasicFileIO;
 import util.Util;
-import util.ViterbiPaths;
 import edu.berkeley.nlp.util.ArrayUtil;
 import edu.berkeley.nlp.util.Triple;
 import edu.stanford.nlp.math.ArrayMath;
@@ -69,6 +65,28 @@ public class Model {
 		edgeCoefs = new double[numLabels + 1][numLabels];
 		biasCoefs = new double[numLabels];
 	}
+	
+	/**
+	 * Computes unnormalized log-potentials. CLOBBERS labelScores
+	 **/
+	// slang for overwrites
+	public void computeLabelScores(int t, ModelSentence sentence,
+			double[] labelScores) {
+		Arrays.fill(labelScores, 0);
+		computeBiasScores(labelScores);
+		computeEdgeScores(t, sentence, labelScores);
+		computeObservedFeatureScores(t, sentence, labelScores);
+	}
+	
+	/** Adds into labelScores **/
+	public void computeEdgeScores(int t, ModelSentence sentence,
+			double[] labelScores) {
+		int prev = sentence.edgeFeatures[t];
+		for (int k = 0; k < numLabels; k++) {
+			labelScores[k] += edgeCoefs[prev][k];
+		}
+	}
+	
 
 	/**
 	 * "given labels" i.e. at trainingtime labels are observed. You hide the
@@ -101,45 +119,6 @@ public class Model {
 		return posterior;
 	}
 
-	/**
-	 * THIS CLOBBERS THE LABELS, stores its decoding into them. Does progressive
-	 * rolling edge feature extraction
-	 **/
-	public void greedyDecode(ModelSentence sentence, boolean storeConfidences) {
-		//System.out.println("Running the greedy decode.");
-
-		int T = sentence.T;
-		sentence.labels = new int[T];
-		sentence.edgeFeatures[0] = startMarker();
-
-		//System.out.println("sentence edge feature 1 aka startMarker(): "
-		//		+ sentence.edgeFeatures[0]);
-		//System.out.println("numLabels: " + numLabels + " T: " + T);
-
-		if (storeConfidences)
-			//TODO will need an extra dimension for multi-path greedy.
-			sentence.confidences = new double[T];
-
-		double[] labelScores = new double[numLabels];
-		for (int t = 0; t < T; t++) {
-			computeLabelScores(t, sentence, labelScores);
-			sentence.labels[t] = ArrayMath.argmax(labelScores);
-			//System.out.println("labelScores " + priArr(labelScores));
-			//System.out.println("label with highest score: "
-			//		+ ArrayMath.argmax(labelScores));
-			//System.out.println("name of that label: "
-			//		+ labelVocab.name(ArrayMath.argmax(labelScores)));
-			//nargmax(labelScores, 1);
-			if (t < T - 1)
-				sentence.edgeFeatures[t + 1] = sentence.labels[t];
-			if (storeConfidences) {
-				ArrayMath.expInPlace(labelScores);
-				double Z = ArrayMath.sum(labelScores);
-				ArrayMath.multiplyInPlace(labelScores, 1.0 / Z);
-				sentence.confidences[t] = labelScores[sentence.labels[t]];
-			}
-		}
-	}
 
 	public String priArr(double[] arr) {
 		String x = "arr: ";
@@ -163,12 +142,6 @@ public class Model {
 
 	}
 
-	// TODO make this nicer
-	//	public int nargmax(double[] vals, int n) {
-	//		System.out.println("asdf");
-	//		return n;
-	//	}
-
 	/**
 	 * This needs forward-backward I think
 	 * 
@@ -179,211 +152,6 @@ public class Model {
 		return null;
 	}
 	
-	public void splitViterbiDecode(ModelSentence sentence) {
-		
-		ViterbiPaths vp = new ViterbiPaths();
-		for(int i=0; i<sentence.T; i++)
-		{
-			divergedViterbiDecode(sentence, i, vp);
-			//System.out.println("paths size: "+vp.getPaths().size());
-			//System.out.println("probs size: "+vp.getProbs().size());
-		}
-		Double[] objArr = (Double[]) (vp.getProbs()).toArray(new Double[0]);
-		double[] arr = ArrayUtils.toPrimitive(objArr);
-		int index = u.nthLargest(2, arr);
-		//System.out.println("index of largest: "+index +":"+objArr.length+":"+arr.length);
-		//System.out.println("probs: ");
-		//Util.p(arr);
-		
-		ArrayList<Integer> vPathArrList = vp.getPaths().get(index);
-		Integer[] vPathArrListObjArr = (Integer[]) vPathArrList.toArray(new Integer[0]);
-		int[] vPath = ArrayUtils.toPrimitive(vPathArrListObjArr);
-		int n = 3;
-		int[][] npaths = vp.topNHighestPaths(n, 4);
-		sentence.nPaths = npaths;
-		//System.out.println("n("+n+") paths:");
-		//Util.p(npaths);
-		sentence.labels = vPath;
-		
-	}
-
-
-	/**
-	 * Implement several runs of viterbi but adding a deviation on each each
-	 * step. then on each of the runs that splits switching back to finding the
-	 * maximum path. Is this cool?
-	 * @return 
-	 */
-	public ViterbiPaths divergedViterbiDecode(ModelSentence sentence, int divergePoint, ViterbiPaths vp) {
-		int T = sentence.T;
-		sentence.labels = new int[T];
-		int[][] bptr = new int[T][numLabels];
-		double[][] vit = new double[T][numLabels];
-		double[] labelScores = new double[numLabels];
-
-		// System.out.println("start Marker = "+ startMarker());
-		computeVitLabelScores(0, startMarker(), sentence, labelScores);
-		// System.out.println("label score init: \n" + priArr(labelScores));
-		ArrayUtil.logNormalize(labelScores);
-		// System.out.println("label score init (log norm'd): \n" +
-		// priArr(labelScores));
-
-		// initialization
-		vit[0] = labelScores;
-
-		for (int k = 0; k < numLabels; k++) {
-			// start marker for all labels
-			bptr[0][k] = startMarker();
-		}
-
-		// System.out.println("Initial back pointer array: " + priArr(bptr[0]));
-
-		// Calculate viterbi scores
-		for (int t = 1; t < T; t++) {
-			//System.out.println(">>>>Token: " + t);
-			double[][] prevcurr = new double[numLabels][numLabels];
-			for (int s = 0; s < numLabels; s++) {
-				//System.out.println("labelScores[" + s + "]" + labelScores[s]);
-				computeVitLabelScores(t, s, sentence, prevcurr[s]);
-				//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
-				ArrayUtil.logNormalize(prevcurr[s]);
-				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
-			}
-			//System.out.println("prevcurr: ");
-			//u.p(prevcurr);
-			for (int s = 0; s < numLabels; s++) {
-				double[] sprobs = getColumn(prevcurr, s);
-				if (t == divergePoint) {
-					bptr[t][s] = u.nthLargest(2, sprobs);
-				} else {
-					bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
-				}
-
-				vit[t][s] = sprobs[bptr[t][s]];
-			}
-			labelScores = vit[t];
-		}
-
-		//System.out.print("vit[][] = ");
-		//u.p(vit);
-		
-		// multiple paths produced via viterbi methods.
-		int[][] viterbiPaths = new int[numLabels][T];
-		double[] probs = new double[numLabels];
-		// for each row in the viterbi matrix (rows = labels : columns = tokens)
-		for (int d = 0; d < vit[T - 1].length; d++) {
-
-			// sentence.labels[T-1] = u.nthLargest(d, vit[T-1]); //ArrayUtil.argmax(vit[T-1]);
-			viterbiPaths[d][T - 1] = u.nthLargest(d + 1, vit[T - 1]);
-			//Util.p(vit[T - 1]);
-			//System.out.println("` " + viterbiPaths[d][T - 1] + " asd "
-			//		+ labelVocab.name(viterbiPaths[d][T - 1]));
-			//System.out.print("***" + labelVocab.name(viterbiPaths[d][T - 1]));
-			//System.out.println(" with prob: " + Math.exp(vit[T - 1][viterbiPaths[d][T - 1]]));
-			double unNormalProb = Math.exp(vit[T - 1][viterbiPaths[d][T - 1]]);
-			
-			int backtrace = bptr[T - 1][viterbiPaths[d][T - 1]];
-			for (int i = T - 2; (i >= 0) && (backtrace != startMarker()); i--) { // termination
-				// sentence.labels[i] = backtrace;
-				viterbiPaths[d][i] = backtrace;
-				//System.out.println(labelVocab.name(backtrace) + " with prob: "
-				//		+ Math.exp(vit[i][backtrace]));
-				unNormalProb *= Math.exp(vit[i][backtrace]);
-
-				backtrace = bptr[i][backtrace];
-			}
-			assert (backtrace == startMarker());
-			probs[d] = unNormalProb;
-		}
-		//sentence.labels = viterbiPaths[1];
-		vp.addPaths(viterbiPaths);
-		vp.addProbs(probs);
-	
-		return vp;
-	}
-	
-	public void doubleBackPointerArray(ModelSentence sentence, int divergePoint, ViterbiPaths vp) {
-		int T = sentence.T;
-		sentence.labels = new int[T];
-		int[][] bptr = new int[T][numLabels];
-		double[][] vit = new double[T][numLabels];
-		double[] labelScores = new double[numLabels];
-
-		// System.out.println("start Marker = "+ startMarker());
-		computeVitLabelScores(0, startMarker(), sentence, labelScores);
-		// System.out.println("label score init: \n" + priArr(labelScores));
-		ArrayUtil.logNormalize(labelScores);
-		// System.out.println("label score init (log norm'd): \n" +
-		// priArr(labelScores));
-
-		// initialization
-		vit[0] = labelScores;
-
-		for (int k = 0; k < numLabels; k++) {
-			// start marker for all labels
-			bptr[0][k] = startMarker();
-		}
-
-		// System.out.println("Initial back pointer array: " + priArr(bptr[0]));
-
-		// Calculate viterbi scores
-		for (int t = 1; t < T; t++) {
-			//System.out.println(">>>>Token: " + t);
-			double[][] prevcurr = new double[numLabels][numLabels];
-			for (int s = 0; s < numLabels; s++) {
-				//System.out.println("labelScores[" + s + "]" + labelScores[s]);
-				computeVitLabelScores(t, s, sentence, prevcurr[s]);
-				//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
-				ArrayUtil.logNormalize(prevcurr[s]);
-				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
-			}
-			System.out.println("prevcurr: ");
-			u.p(prevcurr);
-			for (int s = 0; s < numLabels; s++) {
-				double[] sprobs = getColumn(prevcurr, s);
-				if (t == divergePoint) {
-					bptr[t][s] = u.nthLargest(2, sprobs);
-				} else {
-					bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
-				}
-
-				vit[t][s] = sprobs[bptr[t][s]];
-			}
-			labelScores = vit[t];
-		}
-	}
-	
-	//TODO remove
-	public void computeVitLabelScores(int t, int prior, ModelSentence sentence,
-			double[] labelScores) {
-		Arrays.fill(labelScores, 0);
-		computeBiasScores(labelScores);
-		//System.out.println("prior = " + prior);
-		viterbiEdgeScores(prior, sentence, labelScores);
-		//System.out.println("t = " + t);
-		computeObservedFeatureScores(t, sentence, labelScores);
-	}
-	
-	/**
-	 * @return dim T array s.t. labelScores[t]+=score of label prior followed by
-	 *         label t
-	 **/
-	public void viterbiEdgeScores(int prior, ModelSentence sentence,
-			double[] EdgeScores) {
-		for (int k = 0; k < numLabels; k++) {
-			EdgeScores[k] += edgeCoefs[prior][k];
-		}
-	}
-
-	//TODO remove
-	private double[] getColumn(double[][] matrix, int col) {
-		double[] column = new double[matrix.length];
-		for (int i = 0; i < matrix[0].length; i++) {
-			column[i] = matrix[i][col];
-		}
-		return column;
-	}
-
 	public void mbrDecode(ModelSentence sentence) {
 		double[][] posterior = inferPosteriorForUnknownLabels(sentence);
 		for (int t = 0; t < sentence.T; t++) {
@@ -391,35 +159,11 @@ public class Model {
 		}
 	}
 
-	/**
-	 * Computes unnormalized log-potentials. CLOBBERS labelScores
-	 **/
-	// slang for overwrites
-	public void computeLabelScores(int t, ModelSentence sentence,
-			double[] labelScores) {
-		Arrays.fill(labelScores, 0);
-		computeBiasScores(labelScores);
-		computeEdgeScores(t, sentence, labelScores);
-		computeObservedFeatureScores(t, sentence, labelScores);
-	}
-
-
-
 	/** Adds into labelScores **/
 	public void computeBiasScores(double[] labelScores) {
 		for (int k = 0; k < numLabels; k++) {
 			labelScores[k] += biasCoefs[k];
 		}
-	}
-
-	/** Adds into labelScores **/
-	public void computeEdgeScores(int t, ModelSentence sentence,
-			double[] labelScores) {
-		int prev = sentence.edgeFeatures[t];
-		for (int k = 0; k < numLabels; k++) {
-			labelScores[k] += edgeCoefs[prev][k];
-		}
-
 	}
 
 	/** Adds into labelScores **/

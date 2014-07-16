@@ -1,22 +1,24 @@
 package main;
 
+import impl.ModelSentence;
+import impl.Sentence;
+import impl.decoders.IDecoder;
+import impl.decoders.greedy.Greedy;
+import impl.decoders.viterbi.ViterbiArray;
+import impl.features.WordClusterPaths;
+import io.CoNLLReader;
+import io.JsonTweetReader;
+
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.io.PrintStream;
-import java.io.FileOutputStream;
-import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Scanner;
 
-import impl.ModelSentence;
-import impl.Sentence;
-import impl.features.FeatureExtractor;
-import impl.features.WordClusterPaths;
-import io.CoNLLReader;
-import io.JsonTweetReader;
 import util.BasicFileIO;
 import edu.stanford.nlp.util.StringUtils;
 
@@ -158,12 +160,16 @@ public class RunTagger {
 	public void goDecode(ModelSentence mSent) {
 		if (decoder == Decoder.GREEDY) {
 			//System.out.println("Running GREEDY decode()");
-			tagger.model.greedyDecode(mSent, showConfidence);
+			//tagger.model.greedyDecode(mSent, showConfidence);
+			Greedy greedy = new Greedy(tagger.model);
+			greedy.decode(mSent);
 		} else if (decoder == Decoder.VITERBI) {
 //			if (showConfidence) throw new RuntimeException("--confidence only works with greedy decoder right now, sorry, yes this is a lame limitation"); <<< I kinda fixed it no? :D MIKEY FOR PRESIDENT!
 			//System.out.println("Running VITERBI decode()");
 			//tagger.model.viterbiDecode(mSent);
-			tagger.model.splitViterbiDecode(mSent);
+			IDecoder diverge = new ViterbiArray(tagger.model);
+			diverge.decode(mSent);
+			// tagger.model.splitViterbiDecode(mSent);
 		}		
 	}
 	

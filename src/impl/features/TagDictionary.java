@@ -18,7 +18,7 @@ public class TagDictionary {
 
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			System.out.println("Could not run TagDictionary's fucntion loadData()");
 			e.printStackTrace();
 		}
     }
