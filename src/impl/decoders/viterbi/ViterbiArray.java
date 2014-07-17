@@ -49,7 +49,8 @@ public class ViterbiArray implements IDecoder {
 		double[][] vit = new double[T][numLabels];
 		ArrayList<ArrayList<List<Double>>> viter = new ArrayList<>();
 		double[] labelScores = new double[numLabels];
-
+		ArrayList<List<Double>> labelScoresMult = new ArrayList<>();
+		
 		// System.out.println("start Marker = "+ startMarker());
 		computeVitLabelScores(0, m.startMarker(), sentence, labelScores);
 		// System.out.println("label score init: \n" + priArr(labelScores));
@@ -59,13 +60,16 @@ public class ViterbiArray implements IDecoder {
 
 		// initialization
 		ArrayList<List<Double>> v = new ArrayList<>();
+		List<Double> v2 = new ArrayList<>();
 		List<Double> arrayListLabelScores;
 		arrayListLabelScores = Arrays.asList(ArrayUtils.toObject(labelScores));
 		for(int q = 0; q<numLabels; q++)
 		{
 			v.add(arrayListLabelScores);
+			
 		}
 		viter.add(v);
+		labelScoresMult.add(v2);
 		vit[0] = labelScores;
 		
 		
@@ -128,6 +132,8 @@ public class ViterbiArray implements IDecoder {
 				}
 				
 			}
+			//TODO sth missing here?
+			
 			labelScores = vit[t];
 		}
 		
