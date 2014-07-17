@@ -6,9 +6,11 @@ import impl.decoders.IDecoder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+
+import org.apache.commons.lang3.ArrayUtils;
 
 import util.Util;
-import util.ViterbiPaths;
 import edu.berkeley.nlp.util.ArrayUtil;
 
 public class ViterbiArray implements IDecoder {
@@ -45,6 +47,7 @@ public class ViterbiArray implements IDecoder {
 		int[][] bptr = new int[T][numLabels];
 		ArrayList<ArrayList<ArrayList<Integer>>> bkptr = new ArrayList<>();
 		double[][] vit = new double[T][numLabels];
+		ArrayList<ArrayList<List<Double>>> viter = new ArrayList<>();
 		double[] labelScores = new double[numLabels];
 
 		// System.out.println("start Marker = "+ startMarker());
@@ -55,8 +58,16 @@ public class ViterbiArray implements IDecoder {
 		// priArr(labelScores));
 
 		// initialization
+		ArrayList<List<Double>> v = new ArrayList<>();
+		List<Double> arrayListLabelScores;
+		arrayListLabelScores = Arrays.asList(ArrayUtils.toObject(labelScores));
+		for(int q = 0; q<numLabels; q++)
+		{
+			v.add(arrayListLabelScores);
+		}
+		viter.add(v);
 		vit[0] = labelScores;
-
+		
 		
 		for (int k = 0; k < numLabels; k++) {
 			// start marker for all labels
@@ -71,6 +82,7 @@ public class ViterbiArray implements IDecoder {
 			{
 				bkptr.get(0).get(k).add(m.startMarker());
 			}
+			//System.out.println(k+": "+bkptr.get(0).get(k).toString());
 		}
 		
 		// Calculate viterbi scores
@@ -78,6 +90,8 @@ public class ViterbiArray implements IDecoder {
 			//System.out.println(">>>>Token: " + t);
 			ArrayList<ArrayList<Integer>> aT = new ArrayList<>();
 			bkptr.add(aT);
+			ArrayList<List<Double>> z = new ArrayList<>();
+			viter.add(z);			
 			
 			double[][] prevcurr = new double[numLabels][numLabels];
 			for (int s = 0; s < numLabels; s++) {
@@ -91,24 +105,55 @@ public class ViterbiArray implements IDecoder {
 			//System.out.println("prevcurr: ");
 			//u.p(prevcurr);
 			for (int s = 0; s < numLabels; s++) {
+				List<Double> y = new ArrayList<>();
+				viter.get(t).add(y);
 				ArrayList<Integer> x = new ArrayList<>();
 				bkptr.get(t).add(x);
 				double[] sprobs = u.getColumn(prevcurr, s);
 				//if (t == divergePoint) {
 				//	bptr[t][s] = u.nthLargest(2, sprobs);
 				//} else {
-					bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
-					for(int w =0; w<numLabels; w++)
-					{
-						int f = u.nthLargest(w+1, sprobs);
-						bkptr.get(t).get(s).add(f);
-					}
+				bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
+				for(int w =0; w<numLabels; w++)
+				{
+					int f = u.nthLargest(w+1, sprobs);
+					bkptr.get(t).get(s).add(f);
+				}
 				//}
-
+				
 				vit[t][s] = sprobs[bptr[t][s]];
+				for(int w =0; w<numLabels; w++)
+				{
+					viter.get(t).get(s).add(sprobs[(bkptr.get(t).get(s).get(0))-1]);
+				}
+				
 			}
 			labelScores = vit[t];
 		}
+		
+		//TODO old
+		//sentence.labels[T - 1] = ArrayUtil.argmax(vit[T - 1]);
+		Double[] aa = (Double[])(viter.get(T-1).get(0)).toArray(new Double[viter.get(T-1).get(0).size()]);
+		double[] ab = ArrayUtils.toPrimitive(aa);
+		u.p(vit[T-1]);
+		u.p(ab);
+		sentence.labels[T-1] = ArrayUtil.argmax(ab);
+		
+		//System.out.print("***" + labelVocab.name(sentence.labels[T - 1]));
+		//System.out.println(" with prob: "
+		//		+ Math.exp(vit[T - 1][sentence.labels[T - 1]]));
+		//int backtrace = bptr[T - 1][sentence.labels[T - 1]];
+		int backtrace = bkptr.get(T-1).get(0).get(sentence.labels[T-1]);
+		for (int i = T - 2; (i >= 0) && (backtrace != m.startMarker()); i--) { // termination
+			sentence.labels[i] = backtrace;
+			//System.out.println("***" + labelVocab.name(backtrace)
+			//		+ " with prob: " + Math.exp(vit[i][backtrace]));
+			
+			//TODO old
+			//backtrace = bptr[i][backtrace];
+			backtrace = bkptr.get(i).get(1).get(backtrace);
+		}
+		assert (backtrace == m.startMarker());
 	}
 	
 	//TODO remove
