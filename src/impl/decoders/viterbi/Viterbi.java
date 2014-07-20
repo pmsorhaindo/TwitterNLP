@@ -43,19 +43,18 @@ public class Viterbi implements IDecoder {
 	 * of token t-1 (t=0->startMarker)
 	 */
 	public void viterbiDecode(ModelSentence sentence) {
-		int T = sentence.T;
-		sentence.labels = new int[T];
-		int[][] bptr = new int[T][numLabels];
-		double[][] vit = new double[T][numLabels];
-		double[] labelScores = new double[numLabels];
+		//Initialisation
+		int T = sentence.T; // Number of tokens to be tagged.
+		sentence.labels = new int[T]; // final labeled sequence
+		int[][] bptr = new int[T][numLabels]; // backpointer array
+		double[][] vit = new double[T][numLabels]; // viterbi Matrix
+		double[] labelScores = new double[numLabels]; 
 
-		//System.out.println("start Marker = " + startMarker());
 		
 		computeVitLabelScores(0, m.startMarker(), sentence, labelScores);
-		//System.out.println("label score init: \n" + priArr(labelScores));
 		ArrayUtil.logNormalize(labelScores);
-		//System.out.println("label score init (log norm'd): \n" + priArr(labelScores));
-		// initialization
+		
+		// Assigning first label scores to the first column in the viterbi matrix
 		vit[0] = labelScores;
 
 		for (int k = 0; k < numLabels; k++) {
@@ -63,11 +62,8 @@ public class Viterbi implements IDecoder {
 			bptr[0][k] = m.startMarker();
 		}
 
-		//System.out.println("Initial back pointer array: " + priArr(bptr[0]));
-
 		// Calculate viterbi label scores.
 		for (int t = 1; t < T; t++) {
-			//System.out.println(">>>>Token: " + t);
 			double[][] prevcurr = new double[numLabels][numLabels];
 			for (int s = 0; s < numLabels; s++) {
 				//System.out.println("labelScores[" + s + "]" + labelScores[s]);

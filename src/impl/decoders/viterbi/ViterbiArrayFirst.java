@@ -13,13 +13,13 @@ import org.apache.commons.lang3.ArrayUtils;
 import util.Util;
 import edu.berkeley.nlp.util.ArrayUtil;
 
-public class ViterbiArray implements IDecoder {
+public class ViterbiArrayFirst implements IDecoder {
 	
 	private Model m;
 	private int numLabels;
 	private Util u;
 	
-	public ViterbiArray(Model m){
+	public ViterbiArrayFirst(Model m){
 		
 		u = new Util();
 		this.m = m;
@@ -91,14 +91,17 @@ public class ViterbiArray implements IDecoder {
 			ArrayList<List<Double>> z = new ArrayList<>();
 			viter.add(z);			
 			
-			double[][] prevcurr = new double[numLabels][numLabels];
+			double[][][] prevcurr = new double[numLabels][numLabels][numLabels];
 			for (int s = 0; s < numLabels; s++) {
 
-				computeVitLabelScores(t, s, sentence, prevcurr[s]);
-				//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
-				ArrayUtil.logNormalize(prevcurr[s]);
-				//prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
-				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScoresMult.get(0).get(s));
+				for (int u = 0; u<numLabels;u++)
+				{
+					computeVitLabelScores(t, s, sentence, prevcurr[u][s]);
+					//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
+					ArrayUtil.logNormalize(prevcurr[u][s]);
+					//prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
+					prevcurr[u][s] = ArrayUtil.add(prevcurr[u][s], labelScoresMult.get(u).get(s));
+				}
 			}
 
 			for (int s = 0; s < numLabels; s++) {
@@ -107,11 +110,18 @@ public class ViterbiArray implements IDecoder {
 				ArrayList<Integer> x = new ArrayList<>();
 				bkptr.get(t).add(x);
 				
-				double[] sprobs = u.getColumn(prevcurr, s);
+				List<Double> sprobsObj = new ArrayList<>();
+				for (int w =0; w<numLabels; w++)
+				{					 
+					 sprobsObj.addAll(Arrays.asList(ArrayUtils.toObject(u.getColumn(prevcurr[w], s))));
+				}
+				Double[] sprobsPrim = sprobsObj.toArray(new Double[sprobsObj.size()]);
+				double[] sprobs = ArrayUtils.toPrimitive(sprobsPrim);
 				
 				for(int w =0; w<numLabels; w++)
 				{
 					int f = u.nthLargest(w+1, sprobs);
+					f = f % numLabels;
 					bkptr.get(t).get(s).add(f);
 				}
 
@@ -129,8 +139,7 @@ public class ViterbiArray implements IDecoder {
 				System.out.println("labelscoremult: "+viter.get(t).get(w).toString());
 				labelScoresMult.add(viter.get(t).get(w));
 			}
-			
-			//labelScores = vit[t];
+
 		}
 		
 		//TODO old
