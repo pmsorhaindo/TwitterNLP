@@ -44,9 +44,7 @@ public class ViterbiArray implements IDecoder {
 	public void viterbiArrayDecode(ModelSentence sentence) {
 		int T = sentence.T;
 		sentence.labels = new int[T];
-		int[][] bptr = new int[T][numLabels];
 		ArrayList<ArrayList<ArrayList<Integer>>> bkptr = new ArrayList<>();
-		double[][] vit = new double[T][numLabels];
 		ArrayList<ArrayList<List<Double>>> viter = new ArrayList<>();
 		double[] labelScores = new double[numLabels];
 		ArrayList<List<Double>> labelScoresMult = new ArrayList<>();
@@ -60,23 +58,20 @@ public class ViterbiArray implements IDecoder {
 
 		// initialization
 		ArrayList<List<Double>> v = new ArrayList<>();
-		List<Double> v2 = new ArrayList<>();
 		List<Double> arrayListLabelScores;
 		arrayListLabelScores = Arrays.asList(ArrayUtils.toObject(labelScores));
 		for(int q = 0; q<numLabels; q++)
 		{
 			v.add(arrayListLabelScores);
+			labelScoresMult.add(arrayListLabelScores);
 			
 		}
 		viter.add(v);
-		labelScoresMult.add(v2);
-		vit[0] = labelScores;
 		
 		
 		for (int k = 0; k < numLabels; k++) {
+
 			// start marker for all labels
-			bptr[0][k] = m.startMarker();
-			
 			ArrayList<ArrayList<Integer>> e = new ArrayList<>();
 			bkptr.add(e);
 			ArrayList<Integer> i = new ArrayList<>();
@@ -91,7 +86,6 @@ public class ViterbiArray implements IDecoder {
 		
 		// Calculate viterbi scores
 		for (int t = 1; t < T; t++) {
-			//System.out.println(">>>>Token: " + t);
 			ArrayList<ArrayList<Integer>> aT = new ArrayList<>();
 			bkptr.add(aT);
 			ArrayList<List<Double>> z = new ArrayList<>();
@@ -99,57 +93,62 @@ public class ViterbiArray implements IDecoder {
 			
 			double[][] prevcurr = new double[numLabels][numLabels];
 			for (int s = 0; s < numLabels; s++) {
-				//vit ArrayList<Integer> ???
-				//System.out.println("labelScores[" + s + "]" + labelScores[s]);
+
 				computeVitLabelScores(t, s, sentence, prevcurr[s]);
 				//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
 				ArrayUtil.logNormalize(prevcurr[s]);
-				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
+				//prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
+				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScoresMult.get(0).get(s));
 			}
-			//System.out.println("prevcurr: ");
-			//u.p(prevcurr);
+
 			for (int s = 0; s < numLabels; s++) {
 				List<Double> y = new ArrayList<>();
 				viter.get(t).add(y);
 				ArrayList<Integer> x = new ArrayList<>();
 				bkptr.get(t).add(x);
+				
 				double[] sprobs = u.getColumn(prevcurr, s);
-				//if (t == divergePoint) {
-				//	bptr[t][s] = u.nthLargest(2, sprobs);
-				//} else {
-				bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
+				
 				for(int w =0; w<numLabels; w++)
 				{
 					int f = u.nthLargest(w+1, sprobs);
 					bkptr.get(t).get(s).add(f);
 				}
-				//}
-				
-				vit[t][s] = sprobs[bptr[t][s]];
+
 				for(int w =0; w<numLabels; w++)
 				{
-					viter.get(t).get(s).add(sprobs[(bkptr.get(t).get(s).get(0))-1]);
+					System.out.println("x: "+sprobs[(bkptr.get(t).get(s).get(w))]);
+					viter.get(t).get(s).add(sprobs[(bkptr.get(t).get(s).get(w))]);
 				}
 				
 			}
-			//TODO sth missing here?
+			//TODO sth missing here - fixed?
+			labelScoresMult.clear();
+			for(int w =0; w<numLabels; w++)
+			{
+				System.out.println("labelscoremult: "+viter.get(t).get(w).toString());
+				labelScoresMult.add(viter.get(t).get(w));
+			}
 			
-			labelScores = vit[t];
+			//labelScores = vit[t];
 		}
 		
 		//TODO old
 		//sentence.labels[T - 1] = ArrayUtil.argmax(vit[T - 1]);
 		Double[] aa = (Double[])(viter.get(T-1).get(0)).toArray(new Double[viter.get(T-1).get(0).size()]);
 		double[] ab = ArrayUtils.toPrimitive(aa);
-		u.p(vit[T-1]);
-		u.p(ab);
+		u.p(viter.get(T-1).get(0).toString());
+		u.p(viter.get(T-2).get(0).toString());
 		sentence.labels[T-1] = ArrayUtil.argmax(ab);
+		
+		System.out.println("backtrace = "+ArrayUtil.argmax(ab));
 		
 		//System.out.print("***" + labelVocab.name(sentence.labels[T - 1]));
 		//System.out.println(" with prob: "
 		//		+ Math.exp(vit[T - 1][sentence.labels[T - 1]]));
 		//int backtrace = bptr[T - 1][sentence.labels[T - 1]];
 		int backtrace = bkptr.get(T-1).get(0).get(sentence.labels[T-1]);
+		System.out.println("backtrace = "+backtrace);
 		for (int i = T - 2; (i >= 0) && (backtrace != m.startMarker()); i--) { // termination
 			sentence.labels[i] = backtrace;
 			//System.out.println("***" + labelVocab.name(backtrace)
@@ -158,6 +157,7 @@ public class ViterbiArray implements IDecoder {
 			//TODO old
 			//backtrace = bptr[i][backtrace];
 			backtrace = bkptr.get(i).get(1).get(backtrace);
+			System.out.println("backtrace = "+backtrace);
 		}
 		assert (backtrace == m.startMarker());
 	}
