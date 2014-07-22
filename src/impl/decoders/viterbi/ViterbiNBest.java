@@ -6,12 +6,8 @@ import impl.decoders.IDecoder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-
-import org.apache.commons.lang3.ArrayUtils;
 
 import util.Util;
-import edu.berkeley.nlp.util.ArrayUtil;
 
 public class ViterbiNBest implements IDecoder {
 	
@@ -30,7 +26,15 @@ public class ViterbiNBest implements IDecoder {
 
 	@Override
 	public void decode(ModelSentence sentence) {
+		
+		Viterbi vit = new Viterbi(m);
+		vit.decode(sentence);
+		System.out.println("pre viterbi!");
+		Sequence maxSeq = new Sequence(sentence.labels);
 		viterbiArrayDecode(sentence);
+//		u.p(sentence.labels);
+//		System.out.println(maxSeq.getListOfNodes().toString());
+		computeCandidates(sentence, maxSeq);
 
 	}
 
@@ -40,7 +44,30 @@ public class ViterbiNBest implements IDecoder {
 		return null;
 	}
 	
+	private void computeCandidates(ModelSentence sentence, Sequence maxSeq) {
+		//Initialisation
+		int T = sentence.T; // Number of tokens to be tagged.
+		ArrayList<Sequence> exclusionList = new ArrayList<>();
+		exclusionList.add(maxSeq);
+		
+		for (int i=0; i<T; i++)
+		{
+			// Check all probs aren't already calculated
+			calculateCandiateSubset(sentence, i, exclusionList);
+		}
+		
+	}	
 	
+	private void calculateCandiateSubset(ModelSentence sentence, int token, ArrayList<Sequence> exclusionList) {
+		
+		for(int i = 0; i<this.numLabels; i++)
+		{
+			
+		}
+		
+		
+	}
+
 	public void viterbiArrayDecode(ModelSentence sentence) {
 		int T = sentence.T;
 		sentence.labels = new int[T];

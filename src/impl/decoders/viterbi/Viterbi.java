@@ -93,6 +93,8 @@ public class Viterbi implements IDecoder {
 			backtrace = bptr[i][backtrace];
 		}
 		assert (backtrace == m.startMarker());
+		u.p("lsabel sequence");
+		u.p(sentence.labels);
 		
 	}
 	
