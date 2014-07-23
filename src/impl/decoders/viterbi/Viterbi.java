@@ -87,14 +87,14 @@ public class Viterbi implements IDecoder {
 		this.probs = new ArrayList<>();
 		sentence.labels[T - 1] = ArrayUtil.argmax(vit[T - 1]);
 		System.out.print("***" + m.labelVocab.name(sentence.labels[T - 1]));
-		double prob = Math.exp(vit[T - 1][sentence.labels[T - 1]]);
+		double prob = vit[T - 1][sentence.labels[T - 1]]; //Math.exp(vit[T - 1][sentence.labels[T - 1]]);
 		System.out.println(" with prob: " + prob);
 		this.probs.add(prob);
 		
 		int backtrace = bptr[T - 1][sentence.labels[T - 1]];
 		for (int i = T - 2; (i >= 0) && (backtrace != m.startMarker()); i--) { // termination
 			sentence.labels[i] = backtrace;
-			double newProb = Math.exp(vit[i][backtrace]);
+			double newProb = vit[i][backtrace]; //Math.exp(vit[i][backtrace]);
 			System.out.println("***" + m.labelVocab.name(backtrace)
 					+ " with prob: " + newProb);
 			this.probs.add(newProb);

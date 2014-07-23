@@ -16,6 +16,7 @@ public class ViterbiNBest implements IDecoder {
 	private int numLabels;
 	private Util u;
 	private ModelSentence sentence;
+	private ArrayList<Sequence> exclusionList = new ArrayList<>();
 	
 	public ViterbiNBest(Model m){
 		
@@ -31,14 +32,20 @@ public class ViterbiNBest implements IDecoder {
 		this.sentence = sentence;
 		Viterbi vit = new Viterbi(m);
 		vit.decode(sentence);
+		u.p(sentence.labels);
 		ArrayList<Double> sequenceProbs = vit.getProbs();
 		System.out.println("pre viterbi complete!");
 		Sequence maxSeq = new Sequence(m.startMarker(), sequenceProbs,sentence.labels);
 		viterbiNBest(sentence);
 		u.p(sentence.labels);
-		System.out.println(maxSeq.getListOfNodes().toString());
-		computeCandidates(sentence, maxSeq);
-
+		Sequence s = new Sequence(); 
+		s = computeCandidates(sentence, maxSeq);
+		sentence.labels = s.getLabelIndexes();
+		u.p(sentence.labels);
+		
+		s = computeCandidates(sentence, s);
+		sentence.labels = s.getLabelIndexes();
+		u.p(sentence.labels);
 	}
 
 	@Override
@@ -47,50 +54,77 @@ public class ViterbiNBest implements IDecoder {
 		return null;
 	}
 	
-	private void computeCandidates(ModelSentence sentence, Sequence maxSeq) {
+	private Sequence computeCandidates(ModelSentence sentence, Sequence maxSeq) {
 		//Initialisation
 		int T = sentence.T; // Number of tokens to be tagged.
-		ArrayList<Sequence> exclusionList = new ArrayList<>();
 		ArrayList<Sequence> inclusionList = new ArrayList<>();
-		exclusionList.add(maxSeq);
+		exclusionList.addAll(maxSeq.getPathSegments());
 		
 		for (int i=0; i<T; i++)
 		{
 			// Check all probs aren't already calculated
-			calculateCandiateSubset(sentence, i, exclusionList,inclusionList);
+			Sequence seq = new Sequence(); 
+			seq = calculateCandiateSubset(sentence, i, exclusionList,inclusionList,maxSeq);
+			//System.out.println("*** new sequence "+seq.getListOfNodes().toString()+" : "+seq.getProbabilityOfSequence());
 		}
 		
+		int bestSeqIndex = 0;
+		for  (int z = 0; z<inclusionList.size(); z++){
+			if(((inclusionList.get(z).getProbabilityOfSequence() > inclusionList.get(bestSeqIndex).getProbabilityOfSequence()) && inclusionList.get(z).getListOfNodes().size() == T+1)|| z == 0) //TODO length check to prevent problems when n gets larger. Done?
+			{
+				bestSeqIndex = z;
+			}
+		}
+		inclusionList.get(bestSeqIndex).generateSegments();
+		exclusionList.add(inclusionList.get(bestSeqIndex));
+		//System.out.println("i:"+T+ " "+inclusionList.get(bestSeqIndex).getListOfNodes().toString());
+		return inclusionList.get(bestSeqIndex);
 	}
 	
-	private void calculateCandiateSubset(ModelSentence sentence, int token, ArrayList<Sequence> exclusionList, ArrayList<Sequence> inclusionList) {
+	private Sequence calculateCandiateSubset(ModelSentence sentence, int token, ArrayList<Sequence> exclusionList, ArrayList<Sequence> inclusionList, Sequence maxSeq) {
 		
 		for (int t = 0; t< (sentence.T); t++)
 		{
-			//take the ith  bit of path from max sequence
-			Sequence s = exclusionList.get(0).getIthPathSegment(t);
-			System.out.println("sequence " + t +" :"+s.getListOfNodes().toString());
+			System.out.println("iths " + t +" :"+maxSeq.getPathSegments().size());
+			Sequence s = maxSeq.getIthPathSegment(t);
 			
 			double[] prevcurr = new double[m.numLabels];
-			computeVitLabelScores(t, exclusionList.get(0).getListOfNodes().get(t), sentence, prevcurr);
+			computeVitLabelScores(t, maxSeq.getListOfNodes().get(t), sentence, prevcurr);
 			//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
 			ArrayUtil.logNormalize(prevcurr);
 			double[] newProb = ArrayUtil.add(prevcurr, s.getProbabilityOfSequence());
-			ArrayList<Integer> nodeStub = new ArrayList<>(); 
-			nodeStub.addAll(s.getListOfNodes());
-			nodeStub.remove(nodeStub.size()-1);
+			
 			for(int i = 0; i<this.numLabels; i++)
 			{
-			
+				ArrayList<Integer> nodeStub = new ArrayList<>(); 
+				nodeStub.addAll(s.getListOfNodes());
+				nodeStub.remove(nodeStub.size()-1);
 				//calculate all i to i+1 sequences excluding those comprising the exclusionlist
 				
-				//check no already a segment
 				nodeStub.add(i);
 				Sequence newS = new Sequence(newProb[i],nodeStub);
 				
-				inclusionList.add(newS);
+				if(!exclusionList.contains(newS))
+				{
+					//System.out.println("Sequence Added "+newS.getListOfNodes().toString()+" : "+newS.getProbabilityOfSequence());
+					inclusionList.add(newS);
+				}
+				else
+				{
+					//System.out.println("Sequence Barred! "+newS.getListOfNodes().toString()+" : "+newS.getProbabilityOfSequence());
+				}
+				
 			}
 		}
 		
+		int bestSeqIndex = 0;
+		for  (int z = 0; z<inclusionList.size(); z++){
+			if(inclusionList.get(z).getProbabilityOfSequence() > inclusionList.get(bestSeqIndex).getProbabilityOfSequence() || z == 0)
+			{
+				bestSeqIndex = z;
+			}
+		}
+		return inclusionList.get(bestSeqIndex);
 	}
 
 	public void viterbiNBest(ModelSentence sentence) {
