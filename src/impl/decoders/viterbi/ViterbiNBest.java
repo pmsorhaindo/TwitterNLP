@@ -29,11 +29,12 @@ public class ViterbiNBest implements IDecoder {
 		
 		Viterbi vit = new Viterbi(m);
 		vit.decode(sentence);
-		System.out.println("pre viterbi!");
-		Sequence maxSeq = new Sequence(sentence.labels);
-		viterbiArrayDecode(sentence);
-//		u.p(sentence.labels);
-//		System.out.println(maxSeq.getListOfNodes().toString());
+		ArrayList<Double> sequenceProbs = vit.getProbs();
+		System.out.println("pre viterbi complete!");
+		Sequence maxSeq = new Sequence(m.startMarker(), sequenceProbs,sentence.labels);
+		viterbiNBest(sentence);
+		u.p(sentence.labels);
+		System.out.println(maxSeq.getListOfNodes().toString());
 		computeCandidates(sentence, maxSeq);
 
 	}
@@ -48,27 +49,41 @@ public class ViterbiNBest implements IDecoder {
 		//Initialisation
 		int T = sentence.T; // Number of tokens to be tagged.
 		ArrayList<Sequence> exclusionList = new ArrayList<>();
+		ArrayList<Sequence> inclusionList = new ArrayList<>();
 		exclusionList.add(maxSeq);
 		
 		for (int i=0; i<T; i++)
 		{
 			// Check all probs aren't already calculated
-			calculateCandiateSubset(sentence, i, exclusionList);
+			calculateCandiateSubset(sentence, i, exclusionList,inclusionList);
 		}
 		
 	}	
 	
-	private void calculateCandiateSubset(ModelSentence sentence, int token, ArrayList<Sequence> exclusionList) {
+	private void calculateCandiateSubset(ModelSentence sentence, int token, ArrayList<Sequence> exclusionList, ArrayList<Sequence> inclusionList) {
 		
-		for(int i = 0; i<this.numLabels; i++)
+		for (int t = 0; t< (sentence.T); t++)
 		{
-			
+			for(int i = 0; i<this.numLabels; i++)
+			{
+				//take the ith  bit of path from max sequence
+				Sequence s = exclusionList.get(0).getIthPathSegment(t);
+				System.out.println("sequence " + i +" :"+s.getListOfNodes().toString());
+				
+				//calculate all i to i+1 sequences excluding those comprising the exclusionlist
+				int node = s.get(s.getListOfNodes().size()-1);
+				Sequence newS = new Sequence(s.getProbabilityOfSequence(),s.getListOfNodes());
+				newS.addSegment(i);
+				inclusionList.add(newS);
+			}
 		}
+		
+		
 		
 		
 	}
 
-	public void viterbiArrayDecode(ModelSentence sentence) {
+	public void viterbiNBest(ModelSentence sentence) {
 		int T = sentence.T;
 		sentence.labels = new int[T];
 		for (int i = 0; i<T; i++) sentence.labels[i]=i;
