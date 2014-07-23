@@ -78,8 +78,7 @@ public class Viterbi implements IDecoder {
 			}
 			for (int s = 0; s < numLabels; s++) {
 				double[] sprobs = u.getColumn(prevcurr, s);
-				bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2,
-														// sprobs);
+				bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
 				vit[t][s] = sprobs[bptr[t][s]];
 			}
 			labelScores = vit[t];
@@ -102,6 +101,7 @@ public class Viterbi implements IDecoder {
 			backtrace = bptr[i][backtrace];
 		}
 		Collections.reverse(this.probs);
+
 		assert (backtrace == m.startMarker());
 		u.p("label sequence");
 		u.p(sentence.labels);

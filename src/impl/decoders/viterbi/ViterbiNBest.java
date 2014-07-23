@@ -7,6 +7,7 @@ import impl.decoders.IDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import edu.berkeley.nlp.util.ArrayUtil;
 import util.Util;
 
 public class ViterbiNBest implements IDecoder {
@@ -14,6 +15,7 @@ public class ViterbiNBest implements IDecoder {
 	private Model m;
 	private int numLabels;
 	private Util u;
+	private ModelSentence sentence;
 	
 	public ViterbiNBest(Model m){
 		
@@ -26,7 +28,7 @@ public class ViterbiNBest implements IDecoder {
 
 	@Override
 	public void decode(ModelSentence sentence) {
-		
+		this.sentence = sentence;
 		Viterbi vit = new Viterbi(m);
 		vit.decode(sentence);
 		ArrayList<Double> sequenceProbs = vit.getProbs();
@@ -58,28 +60,36 @@ public class ViterbiNBest implements IDecoder {
 			calculateCandiateSubset(sentence, i, exclusionList,inclusionList);
 		}
 		
-	}	
+	}
 	
 	private void calculateCandiateSubset(ModelSentence sentence, int token, ArrayList<Sequence> exclusionList, ArrayList<Sequence> inclusionList) {
 		
 		for (int t = 0; t< (sentence.T); t++)
 		{
+			//take the ith  bit of path from max sequence
+			Sequence s = exclusionList.get(0).getIthPathSegment(t);
+			System.out.println("sequence " + t +" :"+s.getListOfNodes().toString());
+			
+			double[] prevcurr = new double[m.numLabels];
+			computeVitLabelScores(t, exclusionList.get(0).getListOfNodes().get(t), sentence, prevcurr);
+			//System.out.println("prevcurr[" + s + "] " + priArr(prevcurr[s]));
+			ArrayUtil.logNormalize(prevcurr);
+			double[] newProb = ArrayUtil.add(prevcurr, s.getProbabilityOfSequence());
+			ArrayList<Integer> nodeStub = new ArrayList<>(); 
+			nodeStub.addAll(s.getListOfNodes());
+			nodeStub.remove(nodeStub.size()-1);
 			for(int i = 0; i<this.numLabels; i++)
 			{
-				//take the ith  bit of path from max sequence
-				Sequence s = exclusionList.get(0).getIthPathSegment(t);
-				System.out.println("sequence " + i +" :"+s.getListOfNodes().toString());
-				
+			
 				//calculate all i to i+1 sequences excluding those comprising the exclusionlist
-				int node = s.get(s.getListOfNodes().size()-1);
-				Sequence newS = new Sequence(s.getProbabilityOfSequence(),s.getListOfNodes());
-				newS.addSegment(i);
+				
+				//check no already a segment
+				nodeStub.add(i);
+				Sequence newS = new Sequence(newProb[i],nodeStub);
+				
 				inclusionList.add(newS);
 			}
 		}
-		
-		
-		
 		
 	}
 
@@ -90,8 +100,7 @@ public class ViterbiNBest implements IDecoder {
 	}
 	
 	//TODO remove
-	public void computeVitLabelScores(int t, int prior, ModelSentence sentence,
-			double[] labelScores) {
+	public void computeVitLabelScores(int t, int prior, ModelSentence sentence, double[] labelScores) {
 		Arrays.fill(labelScores, 0);
 		m.computeBiasScores(labelScores);
 		//System.out.println("prior = " + prior);
@@ -110,5 +119,5 @@ public class ViterbiNBest implements IDecoder {
 			EdgeScores[k] += m.edgeCoefs[prior][k];
 		}
 	}
-
+	
 }

@@ -1,7 +1,12 @@
 package impl.decoders.viterbi;
 
+import impl.Model;
+import impl.ModelSentence;
+
 import java.util.ArrayList;
 import java.util.Collections;
+
+import edu.berkeley.nlp.util.ArrayUtil;
 
 public class Sequence {
 	
@@ -19,11 +24,11 @@ public class Sequence {
 		
 		ArrayList<Integer> tempTags = new ArrayList<>();
 		tempTags.addAll(this.listOfTags);
-		int count = 1;
+		int count = sequenceProbs.size();
 
+		this.setProbabilityOfSequence(sequenceProbs.get(sequenceProbs.size()-1));
 		while(tempTags.size()>1)
 		{	
-			System.out.println("lemons!");
 			pathSegments.add(new Sequence(tempTags));
 			tempTags.remove((tempTags.size()-1));
 			double prob = 1;
@@ -31,7 +36,7 @@ public class Sequence {
 			{
 				prob = prob * sequenceProbs.get(i);
 			}
-			count++;
+			count--;
 			pathSegments.get(pathSegments.size()-1).setProbabilityOfSequence(prob);
 			
 			System.out.println(pathSegments.get((pathSegments.size()-1)).listOfTags.toString() + " : " + pathSegments.get((pathSegments.size()-1)).getProbabilityOfSequence());
@@ -94,13 +99,5 @@ public class Sequence {
 		
 		return pathSegments.get(index);
 	}
-
-	public void addSegment(int i) {
-		
-		listOfTags.add(i);
-		// TODO Auto-generated method stub
-		
-	}
-	
 
 }
