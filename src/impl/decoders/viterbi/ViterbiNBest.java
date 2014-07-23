@@ -13,6 +13,7 @@ import util.Util;
 public class ViterbiNBest implements IDecoder {
 	
 	private Model m;
+	private int n;
 	private int numLabels;
 	private Util u;
 	private ModelSentence sentence;
@@ -21,10 +22,19 @@ public class ViterbiNBest implements IDecoder {
 	public ViterbiNBest(Model m){
 		
 		u = new Util();
+		this.n = 4;
 		this.m = m;
 		this.numLabels = m.labelVocab.size();
 		assert numLabels != 0;
 		
+	}
+
+	public int getN() {
+		return n;
+	}
+
+	public void setN(int n) {
+		this.n = n;
 	}
 
 	@Override
@@ -35,17 +45,32 @@ public class ViterbiNBest implements IDecoder {
 		u.p(sentence.labels);
 		ArrayList<Double> sequenceProbs = vit.getProbs();
 		System.out.println("pre viterbi complete!");
+		
+		int[][] paths = new int[n][sentence.T];
 		Sequence maxSeq = new Sequence(m.startMarker(), sequenceProbs,sentence.labels);
-		viterbiNBest(sentence);
-		u.p(sentence.labels);
+		paths[0] = sentence.labels;
+		
 		Sequence s = new Sequence(); 
 		s = computeCandidates(sentence, maxSeq);
 		sentence.labels = s.getLabelIndexes();
 		u.p(sentence.labels);
+		paths[1] = sentence.labels;
 		
-		s = computeCandidates(sentence, s);
-		sentence.labels = s.getLabelIndexes();
-		u.p(sentence.labels);
+		for(int i=2; i<this.n; i++)
+		{
+			Sequence x = new Sequence();
+			x = computeCandidates(sentence, s);
+			sentence.labels = x.getLabelIndexes();
+			System.out.println("?");
+			u.p(sentence.labels);
+			paths[i] = sentence.labels;
+			u.p(paths);
+			s = x;
+
+		}
+
+		sentence.nPaths= paths;
+		 
 	}
 
 	@Override
@@ -77,7 +102,7 @@ public class ViterbiNBest implements IDecoder {
 		}
 		inclusionList.get(bestSeqIndex).generateSegments();
 		exclusionList.add(inclusionList.get(bestSeqIndex));
-		//System.out.println("i:"+T+ " "+inclusionList.get(bestSeqIndex).getListOfNodes().toString());
+		System.out.println("i:"+T+ " "+inclusionList.get(bestSeqIndex).getListOfNodes().toString());
 		return inclusionList.get(bestSeqIndex);
 	}
 	
@@ -85,7 +110,7 @@ public class ViterbiNBest implements IDecoder {
 		
 		for (int t = 0; t< (sentence.T); t++)
 		{
-			System.out.println("iths " + t +" :"+maxSeq.getPathSegments().size());
+			//System.out.println("iths " + t +" :"+maxSeq.getPathSegments().size());
 			Sequence s = maxSeq.getIthPathSegment(t);
 			
 			double[] prevcurr = new double[m.numLabels];
