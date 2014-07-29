@@ -60,11 +60,14 @@ public class Viterbi implements IDecoder {
 		
 		// Assigning first label scores to the first column in the viterbi matrix
 		vit[0] = labelScores;
-
+		u.p("first vit:");
+		u.p(vit[0]);
+		
 		for (int k = 0; k < numLabels; k++) {
 			// start marker for all labels
 			bptr[0][k] = m.startMarker();
 		}
+		u.p(bptr[0]);
 
 		// Calculate viterbi label scores.
 		for (int t = 1; t < T; t++) {
@@ -76,11 +79,15 @@ public class Viterbi implements IDecoder {
 				ArrayUtil.logNormalize(prevcurr[s]);
 				prevcurr[s] = ArrayUtil.add(prevcurr[s], labelScores[s]);
 			}
+			System.out.println("prevCurr "+t+":");
+			u.p(prevcurr);
 			for (int s = 0; s < numLabels; s++) {
 				double[] sprobs = u.getColumn(prevcurr, s);
 				bptr[t][s] = ArrayUtil.argmax(sprobs); // u.nthLargest(2, sprobs);
 				vit[t][s] = sprobs[bptr[t][s]];
 			}
+			System.out.println("bptr "+t+":");
+			u.p(bptr[t]);
 			labelScores = vit[t];
 		}
 		

@@ -125,7 +125,7 @@ public class Sequence {
 	}
 	
 	public Sequence getIthPathSegment(int index) {
-		if (index<0 || index > listOfTags.size()) return null;// TODO check this boundary!!
+		if (index<0 || index >= listOfTags.size()) return null;// TODO check this boundary!!
 		
 		return pathSegments.get(index);
 	}
@@ -152,6 +152,12 @@ public class Sequence {
 		int[] tags = ArrayUtils.toPrimitive(toPrim);
 		Util.p(tags);
 		return tags;
+	}
+	
+	@Override
+	public String toString(){
+
+		return this.listOfTags.toString();
 	}
 
 }

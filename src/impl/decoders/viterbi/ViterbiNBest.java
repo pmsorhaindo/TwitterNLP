@@ -42,9 +42,9 @@ public class ViterbiNBest implements IDecoder {
 		this.sentence = sentence;
 		Viterbi vit = new Viterbi(m);
 		vit.decode(sentence);
-		u.p(sentence.labels);
+		//u.p(sentence.labels);
 		ArrayList<Double> sequenceProbs = vit.getProbs();
-		System.out.println("pre viterbi complete!");
+		//System.out.println("pre viterbi complete!");
 		
 		int[][] paths = new int[n][sentence.T];
 		Sequence maxSeq = new Sequence(m.startMarker(), sequenceProbs,sentence.labels);
@@ -53,7 +53,7 @@ public class ViterbiNBest implements IDecoder {
 		Sequence s = new Sequence(); 
 		s = computeCandidates(sentence, maxSeq);
 		sentence.labels = s.getLabelIndexes();
-		u.p(sentence.labels);
+		//u.p(sentence.labels);
 		paths[1] = sentence.labels;
 		
 		for(int i=2; i<this.n; i++)
@@ -61,10 +61,10 @@ public class ViterbiNBest implements IDecoder {
 			Sequence x = new Sequence();
 			x = computeCandidates(sentence, s);
 			sentence.labels = x.getLabelIndexes();
-			System.out.println("?");
-			u.p(sentence.labels);
+			System.out.println("3rd plus:");
+			//u.p(sentence.labels);
 			paths[i] = sentence.labels;
-			u.p(paths);
+			//u.p(paths);
 			s = x;
 
 		}
@@ -95,9 +95,13 @@ public class ViterbiNBest implements IDecoder {
 		
 		int bestSeqIndex = 0;
 		for  (int z = 0; z<inclusionList.size(); z++){
-			if(((inclusionList.get(z).getProbabilityOfSequence() > inclusionList.get(bestSeqIndex).getProbabilityOfSequence()) && inclusionList.get(z).getListOfNodes().size() == T+1)|| z == 0) //TODO length check to prevent problems when n gets larger. Done?
-			{
-				bestSeqIndex = z;
+			if(inclusionList.get(z).getListOfNodes().size()== T+1) {
+				
+				if((inclusionList.get(z).getProbabilityOfSequence() > inclusionList.get(bestSeqIndex).getProbabilityOfSequence()) || inclusionList.get(bestSeqIndex).getListOfNodes().size() < T+1) 
+					//TODO length check to prevent problems when n gets larger. Done?
+				{
+					bestSeqIndex = z;
+				}
 			}
 		}
 		inclusionList.get(bestSeqIndex).generateSegments();

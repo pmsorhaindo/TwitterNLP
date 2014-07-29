@@ -19,6 +19,12 @@ import util.FileSplitter;
 public class CrossValidator {
 
 	public CrossValidator() {
+		// produce folds
+		//generate();
+
+	}
+	
+	private void generate(){
 		File path = new File(
 				"/Volumes/LocalDataHD/ps324/Documents/workspace/TwitterNLP/bin/data/");
 		FileSplitter splits = new FileSplitter();
@@ -27,7 +33,6 @@ public class CrossValidator {
 				10, 5);
 		trainModels(path, "daily547_split_");
 		kFold(path);
-
 	}
 
 	private void trainModels(File path, String fileName) {
